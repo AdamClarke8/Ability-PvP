@@ -1,0 +1,208 @@
+options:
+    radius: 1
+
+
+# FFFFFF.F3F3F3.E7E7E7.DBDBDB.CECECE.C2C2C2.B6B6B6.AAAAAA.9E9E9E.929292.868686.797979.6D6D6D.616161.555555
+on script load:
+    delete {action-bar-text::vent::*}
+    set {action-bar-text::vent::1} to "<##FFFFFF>LEFT-CLICK TO VENT"
+    set {action-bar-text::vent::2} to "<##FFFFFF>LEFT-CLICK TO VENT"
+    set {action-bar-text::vent::3} to "<##FFFFFF>LEFT-CLICK TO VENT"
+    set {action-bar-text::vent::4} to "<##FFFFFF>LEFT-CLICK TO VENT"
+    set {action-bar-text::vent::5} to "<##FFFFFF>LEFT-CLICK TO VENT"
+    set {action-bar-text::vent::6} to "<##F3F3F3>LEFT-CLICK TO VENT"
+    set {action-bar-text::vent::7} to "<##E7E7E7>LEFT-CLICK TO VENT"
+    set {action-bar-text::vent::8} to "<##DBDBDB>LEFT-CLICK TO VENT"
+    set {action-bar-text::vent::9} to "<##CECECE>LEFT-CLICK TO VENT"
+    set {action-bar-text::vent::10} to "<##C2C2C2>LEFT-CLICK TO VENT"
+    set {action-bar-text::vent::11} to "<##B6B6B6>LEFT-CLICK TO VENT"
+    set {action-bar-text::vent::12} to "<##AAAAAA>LEFT-CLICK TO VENT"
+    set {action-bar-text::vent::13} to "<##9E9E9E>LEFT-CLICK TO VENT"
+    set {action-bar-text::vent::14} to "<##929292>LEFT-CLICK TO VENT"
+    set {action-bar-text::vent::15} to "<##868686>LEFT-CLICK TO VENT"
+    set {action-bar-text::vent::16} to "<##797979>LEFT-CLICK TO VENT"
+    set {action-bar-text::vent::17} to "<##6D6D6D>LEFT-CLICK TO VENT"
+    set {action-bar-text::vent::18} to "<##616161>LEFT-CLICK TO VENT"
+    set {action-bar-text::vent::19} to "<##555555>LEFT-CLICK TO VENT"
+    set {action-bar-text::vent::20} to "<##555555>LEFT-CLICK TO VENT"
+    set {action-bar-text::vent::21} to "<##555555>LEFT-CLICK TO VENT"
+    set {action-bar-text::vent::22} to "<##555555>LEFT-CLICK TO VENT"
+    set {action-bar-text::vent::23} to "<##616161>LEFT-CLICK TO VENT"
+    set {action-bar-text::vent::24} to "<##6D6D6D>LEFT-CLICK TO VENT"
+    set {action-bar-text::vent::25} to "<##797979>LEFT-CLICK TO VENT"
+    set {action-bar-text::vent::26} to "<##868686>LEFT-CLICK TO VENT"
+    set {action-bar-text::vent::27} to "<##929292>LEFT-CLICK TO VENT"
+    set {action-bar-text::vent::28} to "<##9E9E9E>LEFT-CLICK TO VENT"
+    set {action-bar-text::vent::29} to "<##AAAAAA>LEFT-CLICK TO VENT"
+    set {action-bar-text::vent::30} to "<##B6B6B6>LEFT-CLICK TO VENT"
+    set {action-bar-text::vent::31} to "<##C2C2C2>LEFT-CLICK TO VENT"
+    set {action-bar-text::vent::32} to "<##CECECE>LEFT-CLICK TO VENT"
+    set {action-bar-text::vent::33} to "<##DBDBDB>LEFT-CLICK TO VENT"
+    set {action-bar-text::vent::34} to "<##E7E7E7>LEFT-CLICK TO VENT"
+    set {action-bar-text::vent::35} to "<##F3F3F3>LEFT-CLICK TO VENT"
+
+function spawnVentDisplay(l: location, n: number = 1) :: entity:
+    spawn item display at {_l}:
+        set {_display} to event-entity
+        set item of {_display} to iron trapdoor
+        set display scale of {_display} to vector(1.5, 1.5, 1.5)
+        set display translation of {_display} to vector(0, 0.75, 0.75)
+        set interpolation duration of {_display} to 1 tick
+        set teleport duration of {_display} to 1 tick
+        set sky light override of {_display} to 15
+        set yaw of {_display} to yaw of {_l}
+        set pitch of {_display} to 0
+    if {_n} = 1:
+        set pitch of {_l} to pitch of {_l} * -1
+
+    return {_display}
+
+function vent(p: player):
+
+    set {-power-active::%{_p}%::vent} to true
+    set {-powers-locked::%{_p}%} to true
+
+    set {_range} to {powerAttributes::vent::range}
+
+    set {_vent-display-1} to spawnVentDisplay(location 0.75 horizontally behind {_p})
+
+    set {_l} to location of {_p}
+
+    spawn interaction at {_l}:
+        set {_seat} to event-entity
+        set interaction width of {_seat} to 0
+        set interaction height of {_seat} to 0
+        set {-is-vent-seat::%{_seat}%} to true
+
+    set {_target} to (getTargetLocation({_p}, {_range}) ? {_l})
+
+    set {_ring-display} to spawnTextRing(location 0.125 above {_target}, "&f", {@radius})
+    make {_ring-display} disappear for all players where [input != {_p}]
+
+    set {_orig-scale} to display scale of {_ring-display}
+    set {_orig-translation} to display translation of {_ring-display}
+
+    #set {_shadow-radius} to {@radius} + 0.5
+    #set shadow radius of {_ring-display} to {_shadow-radius}
+    #set {_shadow-strength} to 0
+    #set shadow strength of {_ring-display} to {_shadow-strength}
+
+    applyInvis({_p})
+    make {_p} ride {_seat}
+    send action bar " " to {_p}
+
+    play sound "block.iron_trapdoor.close" at volume 2 at pitch 1.2 at {_l}
+    play sound "block.trial_spawner.close_shutter" at volume 2 at pitch 1 at {_l}
+    play sound "block.trial_spawner.spawn_item_begin" at volume 2 at pitch 1.2 at {_l}
+
+    set {-action-bar::%{_p}%::vent} to true
+    powerActionBar({_p}, "vent")
+
+    loop 40 times:
+
+        if loop-counter < 20:
+            set pitch of {_vent-display-1} to -90 + easeOutBounce(loop-value / 20) * 90
+
+        if loop-counter > 1:
+            if {-target-locked::%{_p}%::vent} = true:
+                exit loop
+
+        set {_ray} to ray trace from {_p} with max distance {_range}
+        if hit location of {_ray} is set:
+            set {_target} to hit location of {_ray}
+            set {_face} to ray trace hit blockface of {_ray}
+
+            set {_ceiling} to false
+            if {_face} = down_face:
+                set {_target} to location 0.125 below {_target}
+                set {_ceiling} to true
+
+        set pitch of {_target} to -90
+        set yaw of {_target} to loop-value * 6
+        teleport {_ring-display} to location 0.125 above {_target}
+    
+        wait 1 tick
+
+    delete {-action-bar::%{_p}%::vent}
+
+    kill {_seat}
+    kill {_ring-display}
+
+    removeInvis({_p})
+
+    delete {-power-active::%{_p}%::vent}
+    delete {-powers-locked::%{_p}%}
+
+    if {-target-locked::%{_p}%::vent} = true:
+
+        delete {-target-locked::%{_p}%::vent}
+
+        if {_ceiling} = true:
+            set {_target} to location 1 above {_target}
+
+        set yaw of {_target} to yaw of {_p}
+        set pitch of {_target} to 0
+        teleport {_p} to location 0.5 above {_target}
+        set {_vent-display-2} to spawnVentDisplay(location 0.75 horizontally behind {_target})
+
+        applyPush({_p}, vector(0, 0.5, 0), {_p}, "vent")
+
+        set {_block-type} to type of block at location 1 below {_target}
+
+        play 50 {_block-type} block particle with offset vector(1, 1, 1) at {_target}
+        draw 1 white flash particle at {_target}
+
+        play sound "block.iron_trapdoor.open" at volume 2 at pitch 1.2 at {_target}
+        play sound "block.trial_spawner.ominous_activate" at volume 2 at pitch 1.2 at {_target}
+        play sound "entity.illusioner.mirror_move" at volume 2 at pitch 1.2 at {_target}
+        play sound (break sound of {_block-type}) at volume 3 at pitch 1 at {_target}
+
+        loop getLivingEntities({_p}, {_target}, 2.5) where [input != {_p}]:
+            set {_ent} to loop-value
+            makeDamage({_p}, {_ent}, {powerAttributes::vent::damage}, "vent")
+            play sound "item.mace.smash_ground" at volume 2 at pitch 1.2 at {_ent}
+            draw 10 crit particle with offset vector(1, 1, 1) with particle speed 0.5 at {_ent}
+
+        loop 40 times:
+
+            if loop-counter < 20:
+                set pitch of {_vent-display-2} to -90 + easeOutBounce(loop-value / 20) * 90
+
+            else if loop-counter = 20:
+                kill {_vent-display-1}
+
+            wait 1 tick
+
+        kill {_vent-display-2}
+
+    else:
+
+        set yaw of {_l} to yaw of {_p}
+        teleport {_p} to location 0.5 above {_l}
+        applyPush({_p}, vector(0, 0.5, 0), {_p}, "vent")
+
+        play sound "block.iron_trapdoor.open" at volume 2 at pitch 0.8 at {_l}
+        play sound "entity.phantom.flap" at volume 2 at pitch 1 at {_l}
+
+        loop getLivingEntities({_p}, {_l}, 2.5) where [input != {_p}]:
+            set {_ent} to loop-value
+            makeDamage({_p}, {_ent}, {powerAttributes::vent::damage}, "vent")
+            play sound "item.mace.smash_ground" at volume 3 at pitch 1.2 at {_ent}
+            draw 10 crit particle with offset vector(1, 1, 1) with particle speed 0.5 at {_ent}
+
+        loop 40 times:
+            if loop-counter < 20:
+                set pitch of {_vent-display-1} to -90 + easeOutBounce(loop-value / 20) * 90
+
+            wait 1 tick
+
+    kill {_vent-display-1}
+
+on dismount:
+    if {-is-vent-seat::%vehicle of event-entity%} = true:
+        cancel event
+
+on left click:
+    if {-power-active::%player%::vent} = true:
+        cancel event
+        set {-target-locked::%player%::vent} to true

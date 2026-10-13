@@ -1,0 +1,228 @@
+#on script load:
+    #kill block displays in radius 8 of {spawn2}
+    #set {_barrelDisplay::*} to buildingToDisplay({structure::cannonBarrel::1}, {structure::cannonBarrel::2}, {structure::cannonBarrel::centre}, 1, location 0.5 above {spawn2})
+#    set {_wheelsDisplay::*} to buildingToDisplay({structure::cannonWheels::1}, {structure::cannonWheels::2}, {structure::cannonWheels::centre}, 1, {spawn2})
+
+#    set {_barrelRoot} to {_barrelDisplay::1}
+#    set {_wheelsRoot} to {_wheelsDisplay::1}
+
+#    while {_wheelsRoot} is alive:
+
+#        set {_angle} to mod(loop-counter * 3, 360)
+#        set {_pitch} to mod(loop-counter * 1, 180) - 90
+#        rotate({_wheelsRoot}, {_angle}, 0, false) 
+#        rotate({_barrelRoot}, {_angle}, {_pitch}, false) 
+#        wait 1 tick
+
+#    kill {_barrelRoot}
+
+function cannonTrail(p: player):
+    while {_p} is not on ground:
+
+        set {_x} to x component of {_p}'s velocity
+        set {_y} to y component of {_p}'s velocity
+        set {_z} to z component of {_p}'s velocity
+
+        set {_velocity} to sqrt({_x}^2 + {_y}^2 + {_z}^2)
+        {_velocity} < 0.1:
+            exit loop
+
+        mod(loop-counter, 2) = 0:
+            draw 1 large smoke particle with offset vector(0, 0, 0) with particle speed 0 at {_p}
+
+        loop getLivingEntities({_p}, {_p}'s location, 3) where [input != {_p}]:
+            {_entitiesHit::*} does not contain loop-value
+            add loop-value to {_entitiesHit::*}
+            #make {_p} damage loop-value by 4
+            makeDamage({_p}, loop-value, 2.5, "party-cannon")
+            push loop-value (vector from {_p} to loop-value) at speed 1.5
+            push loop-value up at speed 1
+            draw 5 crit particle with offset vector(1, 1, 1) with particle speed 0.25 at loop-value
+            draw 1 sweep attack particle at loop-value
+            play sound "entity.player.attack.knockback" at volume 3 at pitch 1.2 at loop-value
+
+        #make {_p} spin for 1 tick
+
+        wait 1 tick
+
+function spawnPartyCannon(l: location):
+
+    set {_l} to location 1.5 above {_l}
+
+    kill block displays in radius 3 of {_l}
+
+    loop 36 times:
+        set {_v} to spherical vector radius 3, yaw loop-value * 10, pitch 0
+        draw 0 poof particle with offset {_v} with particle speed 0.25 at {_l} ~ {_v}
+        draw 0 poof particle with offset {_v} with particle speed 0.25 at {_l} ~ {_v}
+
+    play sound "entity.horse.armor" at volume 3 at pitch 1 at {_l}
+    play sound "block.note_block.pling" at volume 3 at pitch 1.5 at {_l}
+
+    set {_wheelsDisplay::*} to buildingToDisplay({structure::cannonWheels::1}, {structure::cannonWheels::2}, {structure::cannonWheels::centre}, 0.75, {_l})
+    set {_barrelDisplay::*} to buildingToDisplay({structure::cannonBarrel::1}, {structure::cannonBarrel::2}, {structure::cannonBarrel::centre}, 0.75, {_l})
+
+    loop {_wheelsDisplay::*} and {_barrelDisplay::*}:
+        set sky light override of loop-value to 15
+
+    set {_wheelsRoot} to {_wheelsDisplay::1}
+    set {_barrelRoot} to {_barrelDisplay::1}
+
+    spawn interaction at location 1 below {_l}:
+        set {_hitbox} to event-entity
+        set interaction width of {_hitbox} to 4.5
+        set interaction height of {_hitbox} to 4.5
+        set {-yaw::%{_hitbox}%} to yaw of {_l}
+        set {-pitch::%{_hitbox}%} to -90
+        set {-is-party-cannon-interaction::%{_hitbox}%} to true
+
+    spawn interaction at location 1 above {_l}:
+        set {_seat} to event-entity
+        set interaction width of {_seat} to 0
+        set interaction height of {_seat} to 0
+        set {-is-party-cannon-seat::%{_seat}%} to true
+        set {-seat::%{_hitbox}%} to {_seat}
+        set {-hitbox::%{_seat}%} to {_hitbox}
+
+    set {-cannon-barrel-retraction-counter::%{_hitbox}%} to 0
+
+    set {_angle} to 18
+
+    spawn marker at {_l}:
+        set {_marker} to event-entity
+        set {-is-party-cannon-marker::%{_marker}%} to true
+
+    while {_marker} is alive:
+
+        if {-cannon-barrel-retraction-counter::%{_hitbox}%} > 0:
+            subtract 1 from {-cannon-barrel-retraction-counter::%{_hitbox}%}
+            set {_v} to {-cannon-barrel-retraction-vector::%{_hitbox}%} * -1
+            if {-cannon-barrel-retraction-counter::%{_hitbox}%} <= 20:
+                set {_v} to {_v} * {-cannon-barrel-retraction-counter::%{_hitbox}%} / 20
+    
+            teleport {_barrelRoot} to {_l} ~ {_v}
+                
+            if {-cannon-barrel-retraction-counter::%{_hitbox}%} = 0:
+
+                play sound "block.note_block.pling" at volume 1.5 at pitch 1.5 at {_l}
+                play sound "entity.iron_golem.repair" at volume 1.5 at pitch 1.5 at {_l}
+                draw 10 happy villager particle with offset vector(2, 2, 2) at {_l}
+
+                spiral({_l}, "block:cyan concrete", 20, 2.5, 2)
+                spiral({_l}, "block:white concrete", 20, 2.5, 2)
+
+        if {-cannon-barrel-retraction-counter::%{_hitbox}%} > 0:
+            if {-cannon-barrel-retraction-counter::%{_hitbox}%} <= 20:
+                rotateOnRollAxis({_barrelDisplay::*}, {_angle}, vector(0, 0, 1))
+
+                play sound "block.tripwire.attach" at volume 1.5 at pitch 1.2 at {_l}
+                draw 1 smoke particle with offset vector(1, 1, 1) with particle speed 0 at {_l}
+
+        rotate({_wheelsRoot}, {-yaw::%{_hitbox}%}, 0, false)
+        rotate({_barrelRoot}, {-yaw::%{_hitbox}%}, {-pitch::%{_hitbox}%}, false)
+    
+        wait 1 tick
+
+    kill {_barrelRoot}
+    kill {_wheelsRoot}
+    kill {_hitbox}
+    kill {_seat}
+
+on right click on interaction:
+
+    gamemode of player = survival or adventure
+    {-is-spectating::%player%} != true
+
+    if player is riding an interaction:
+        {-is-party-cannon-seat::%vehicle of player%} = true:
+            set {_cannon-hitbox} to {-hitbox::%vehicle of player%}
+
+    else if {-is-party-cannon-interaction::%event-entity%} = true:
+        set {_cannon-hitbox} to event-entity
+
+    {_cannon-hitbox} is set
+
+    if {-powers-locked::%player%} = true:
+        stop
+
+    if {-last-in-beam::%player%::ufo} is set:
+        if time since {-last-in-beam::%player%::ufo} < 2 ticks:
+            stop
+
+    if {-party-cannon-last-used::%{_cannon-hitbox}%} is set:
+        time since {-party-cannon-last-used::%{_cannon-hitbox}%} < 2.5 seconds:
+            stop
+
+    if {-party-cannon-interaction::%player%} is not set:
+        set {_seat} to {-seat::%{_cannon-hitbox}%}
+        passenger of {_seat} is not set
+        make player ride {_seat}
+        set {-party-cannon-interaction::%player%} to {_cannon-hitbox}
+    
+        play sound "entity.horse.armor" at volume 3 at pitch 1.5 at {_cannon-hitbox}
+        draw 5 poof particle with offset vector(2, 2, 2) with particle speed 0.1 at {_cannon-hitbox}
+        draw 3 large smoke particle with offset vector(2, 2, 2) with particle speed 0.1 at {_cannon-hitbox}
+
+        applyInvis(player)
+
+        while passengers of {_seat} is set:
+
+            set {-yaw::%{_cannon-hitbox}%} to player's yaw
+            set {-pitch::%{_cannon-hitbox}%} to player's pitch
+    
+            if difference between player's yaw and {_previous-yaw} > 3:
+                play sound "block.tripwire.attach" at volume 2 at pitch 1.5 - player's pitch / 180 at player
+            else if difference between player's pitch and {_previous-pitch} > 1:
+                play sound "block.tripwire.attach" at volume 2 at pitch 1.5 - player's pitch / 180 at player
+
+            mod(loop-counter, 2) = 0:
+                play sound "entity.tnt.primed" at volume 0.75 at pitch 1.5 at player
+    
+            draw 1 flame particle with offset vector(1, 1, 1) with particle speed 0 at {_cannon-hitbox}
+            draw 1 smoke particle with offset vector(1, 1, 1) with particle speed 0 at {_cannon-hitbox}
+
+            set {_previous-yaw} to player's yaw
+            set {_previous-pitch} to player's pitch
+    
+            wait 1 tick
+
+        removeInvis(player)
+        delete {-party-cannon-interaction::%player%}
+
+    else:
+
+        set {_seat} to {-seat::%{-party-cannon-interaction::%player%}%}
+        set {-party-cannon-last-used::%{_cannon-hitbox}%} to now
+        delete {-party-cannon-interaction::%player%}
+
+        removeInvis(player)
+        remove player from passengers of {_seat}
+
+        set {_v} to vector from yaw (player's yaw) and pitch (pitch of player)
+        applyPush(player, {_v} * 4, player, "party-cannon")
+        #push player {_v} at speed 4
+        cannonTrail(player)
+
+        set {-cannon-barrel-retraction-counter::%{_cannon-hitbox}%} to 50
+        set {-cannon-barrel-retraction-vector::%{_cannon-hitbox}%} to {_v}
+
+        create explosion of force 2 at player
+        popFirework(player's location, (yellow, white and cyan))
+        play sound "entity.firework.launch" at volume 3 at pitch 1 at player
+        play sound "entity.breeze.wind_burst" at volume 3 at pitch 1.2 at player
+        play sound "entity.breeze.idle_air" at volume 3 at pitch 1.25 at player
+        play sound "entity.breeze.idle_air" at volume 3 at pitch 1.75 at player
+
+on dismount:
+    if {-party-cannon-interaction::%player%} is set:
+        delete {-party-cannon-interaction::%player%}
+        #removeInvis(player)
+        play sound "block.fire.extinguish" at volume 2 at pitch 1 at player
+
+on join:
+    remove player from passengers of vehicle of player
+
+on quit:
+    if {-party-cannon-interaction::%player%} is set:
+        clear passengers of {-seat::%{-party-cannon-interaction::%player%}%}
+        delete {-party-cannon-interaction::%player%}

@@ -1,0 +1,62 @@
+options:
+    scale: 10
+
+function transition(p: player, l: location):
+
+    spawn block display at location 1.5 above {_p}:
+        set {_seat} to event-entity
+
+    spawn text display at head of {_p}:
+        set {_display} to event-entity
+        set color of {_display} to rgb(0, 0, 0, 255)
+        set text of {_display} to "    "
+        set display scale of {_display} to vector({@scale}, {@scale}, {@scale})
+        set display translation of {_display} to vector(0, {@scale} * -0.125, -0.5)
+        set sky light override of {_display} to 15
+        set interpolation duration of {_display} to 1 tick
+        make {_display} ride {_seat}
+
+    set gamemode of {_p} to spectator
+    set yaw of {_display} to (yaw of {_p}) + 180
+    set pitch of {_display} to (pitch of {_p}) * -1
+
+    #set {_l} to location 1.5 above spawn of world of {_p}
+    #set yaw of {_l} to 0
+    #set pitch of {_l} to 0
+
+    loop 40 times:
+        set spectator target of {_p} to {_seat}
+        set interpolation delay of {_display} to 0 ticks
+        set {_hori-offset} to {@scale} * -0.5 + loop-value * {@scale} * 0.025
+        set x component of display translation of {_display} to {_hori-offset}
+
+        if loop-counter = 1:
+            set teleport duration of {_display} to 1 tick
+
+        if loop-counter = 19:
+            spawn text display at location 1.5 above {_l}:
+                set {_display2} to event-entity
+                set color of {_display2} to rgb(255, 0, 0, 0)
+                set text of {_display2} to "    "
+                set display scale of {_display2} to vector({@scale}, {@scale}, {@scale})
+                set display translation of {_display2} to vector(0, {@scale} * -0.3, -0.5)
+                set sky light override of {_display2} to 15
+                set interpolation duration of {_display2} to 1 tick
+                set yaw of {_display2} to (yaw of {_l}) + 180
+                set pitch of {_display2} to (yaw of {_l}) * -1
+
+        if loop-counter = 20:
+            wait 1 ticks
+
+            wait 19 ticks
+            teleport {_seat} to {_l} while retaining passengers
+            set yaw of {_display} to (yaw of {_seat}) + 180
+            set pitch of {_display} to (pitch of {_seat}) * -1
+            wait 5 ticks
+            kill {_display2}
+
+        wait 1 tick
+
+    kill {_display}
+    set gamemode of {_p} to survival
+    kill {_seat}

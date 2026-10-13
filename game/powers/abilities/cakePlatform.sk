@@ -1,0 +1,101 @@
+function cakePlatform(p: player):
+    set {_l} to location 0.5 above (getTargetLocation({_p}, 8) ? location 8 infront of {_p})
+    if y-coord of {_l} < (y-coord of spawn point of world of {_p} - 10):
+        set y-coord of {_l} to y-coord of spawn point of world of {_p} - 10
+    set pitch of {_l} to 0
+    set {_orig-scale} to vector(5, 3, 5)
+    set {_orig-translation} to vector(-2.5, 0, -2.5)
+    spawn block display at {_l}:
+        set {_platform} to event-entity
+        set block data of {_platform} to cake[bites=0]
+        set display scale of {_platform} to {_orig-scale}
+        set display translation of {_platform} to {_orig-translation}
+        set teleport duration of {_platform} to 1 tick
+        set sky light override of {_platform} to 15
+
+    play sound "entity.breeze.inhale" at volume 3 at pitch 0.8 at {_l}
+
+    loop 80 times:
+        loop getLivingEntities({_p}, {_l}, 3, true, true):
+            set {_ent} to loop-value-2 
+
+            if time since ({-used::%{_ent}%::%{_name}%::cake-platform}) is set:
+                if time since ({-used::%{_ent}%::%{_name}%::cake-platform}) < 0.5 seconds:
+                    continue
+
+            if loop-counter-2 = 1:
+
+                blockdata tag "bites" of blockdata of {_platform} < 6
+                set blockdata tag "bites" of blockdata of {_platform} to (blockdata tag "bites" of block data of {_platform}) + 1
+                play sound "entity.generic.eat" at volume 3 at pitch 1 at {_platform}
+
+            set {-used::%{_ent}%::%{_name}%::cake-platform} to now
+            set y component of velocity of {_ent} to 0
+            
+            applyPush({_ent}, vector(0, 1.5, 0), {_p}, "cake-platform")
+            set {_last-oscillation} to now
+
+            loop 36 times:
+                set {_v} to spherical vector radius 3, yaw (loop-value-3) * 10, pitch 0
+                draw 0 campfire cosy smoke particle with offset {_v} with particle speed 0.25 at {_l} ~ {_v}
+                draw 0 firework particle with offset {_v} with particle speed 0.25 at {_l} ~ {_v}
+                draw 2 cake block particle  with offset vector(1, 1, 1) at {_l} ~ {_v}
+                #draw 0 cloud at {_l} ~ {_v} with offset {_v} with extra 0.25
+
+            play sound "entity.firework.launch" at volume 3 at pitch 1.2 at {_platform}
+            play sound "entity.blaze.shoot" at volume 3 at pitch 1.2 at {_platform}
+            play sound "entity.breeze.idle_air" at volume 3 at pitch 1.2 at {_platform}
+            play sound "item.trident.riptide_3" at volume 3 at pitch 1.5 at {_platform}
+            #play sound "block.note_block.flute" at volume 3 at pitch 1.2 at {_platform}
+
+        if loop-value < 25:
+            set {_new-scale} to {_orig-scale} * easeOutBounce(loop-value / 25)
+            set display scale of {_platform} to {_new-scale}
+
+            set {_new-translation} to {_orig-translation} * easeOutBounce(loop-value / 25)
+            set x component of display translation of {_platform} to x component of {_new-translation}
+            set z component of display translation of {_platform} to z component of {_new-translation}
+            
+            play sound "entity.chicken.egg" at volume 2.5 at pitch 1 + loop-value / 25 at {_l}
+            #play sound "entity.generic.eat" at volume 2 at pitch 1 + loop-value / 25 at {_l}
+
+        else if loop-value > 60:
+            set {_new-scale} to {_orig-scale} * (cos((loop-value - 60) * 90 / 20) ^ 0.75)
+            set display scale of {_platform} to {_new-scale}
+
+            set {_new-translation} to {_orig-translation} * (cos((loop-value - 60) * 90 / 20) ^ 0.75)
+            set x component of display translation of {_platform} to x component of {_new-translation}
+            set z component of display translation of {_platform} to z component of {_new-translation}
+
+        else:
+            set {_new-scale} to {_orig-scale}
+            set {_new-translation} to {_orig-translation}
+
+        if time since {_last-oscillation} < 10 ticks:
+            set {_ticks} to ticks of time since {_last-oscillation}
+
+            set {_new-scale} to {_new-scale} * (0.33 + 0.67 * easeOutBounce({_ticks} / 10))
+            set display scale of {_platform} to {_new-scale}
+
+            set {_new-translation} to {_new-translation} * (0.33 + 0.67 * easeOutBounce({_ticks} / 10))
+            set x component of display translation of {_platform} to x component of {_new-translation}
+            set z component of display translation of {_platform} to z component of {_new-translation}
+
+        set {_vertOffset} to 0.75 * sin(loop-value * 3.6)
+        add 9 to yaw of {_l}
+        teleport {_platform} to location {_vertOffset} above {_l}
+
+        play sound "entity.phantom.flap" at volume 2.5 at pitch 1.5 at {_platform}
+        if loop-value < 20:
+            play sound "entity.chicken.egg" at volume 2 at pitch 1.25 + loop-value / 50 at {_platform}
+        else if loop-value > 60:
+            play sound "entity.chicken.egg" at volume 2 at pitch 1.75 - (loop-value - 60) / 20 at {_platform}
+        else:
+            play sound "entity.chicken.egg" at volume 2 at pitch 1.75 at {_platform}
+
+        wait 1 tick
+
+    kill {_platform}
+    draw 1 explosion particle at {_l}
+    #play sound "entity.player.burp" at volume 2 at pitch 0.8 at {_l}
+    play sound "entity.generic.explode" at volume 2 at pitch 1.2 at {_l}

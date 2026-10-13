@@ -1,0 +1,50 @@
+function damageBossbar(victim: entity, attacker: entity, damage: number):
+
+	set {-bar-timer::%{_attacker}%::%uuid of {_victim}%} to now
+
+	set {_name} to (name of {_victim}) ? translate component from type of {_victim} ? "%{_victim}%"
+
+	set {-bar::%{_victim}%::%uuid of {_attacker}%} to boss bar with id "%uuid of {_victim}%" with title formatted "&e%{_name}    % &8| &c%health of {_victim} - {_damage}%❤ &8| &e%{_damage}%🗡"
+	set bar color of {-bar::%{_victim}%::%uuid of {_attacker}%} to red
+
+	set bar progress of {-bar::%{_victim}%::%uuid of {_attacker}%} to ((health of {_victim}     - {_damage}) / maximum health of {_victim}    )*100
+	set bar title of {-bar::%{_victim}%::%uuid of {_attacker}%} to formatted "&6%{_name}    % &8| &c%health of {_victim}     - {_damage}%❤ &8| &e%{_damage}%🗡"
+
+	if health of {_victim} = 0:
+		set bar title of {-bar::%{_victim}%::%uuid of {_attacker}%} to "&6%{_name}    % &8| &c0❤ &8| &e%{_damage}%🗡"
+
+	add {_attacker} to bar players of {-bar::%{_victim}%::%uuid of {_attacker}%}
+
+	wait 1 tick
+
+	set bar progress of {-bar::%{_victim}%::%uuid of {_attacker}%} to (health of {_victim} / maximum health of {_victim})*100
+
+	#wait 29 ticks
+
+	#if bar title of {-bar::%{_victim}%::%uuid of {_attacker}%} contains "-" or "0❤":
+	#	remove {_attacker} from bar players of {-bar::%{_victim}%::%uuid of {_attacker}%}
+
+	#if hasDied({_victim}) = true:
+	#	delete {-bar::%{_victim}%::%uuid of {_attacker}%}
+
+	wait 159 ticks
+
+	if difference between {-bar-timer::%{_attacker}%::%uuid of {_victim}%} and now > 6 seconds:
+		remove {_attacker} from bar players of {-bar::%{_victim}%::%uuid of {_attacker}%}
+		delete {-bar::%{_victim}%::%uuid of {_attacker}%}
+		loop boss bars of {_attacker}:
+			if bar title of loop-value contains "-" or "0❤":
+				remove {_attacker} from loop-value
+				delete loop-value
+			#set {_name::*} to bar title of loop-value split at "|"
+			#loop {_name::*}:
+			#	if loop-value-2 contains "-"
+
+	#if hasDied({_victim}) = true:
+	#	loop boss bars of {_attacker}:
+	#		if bar title of loop-value contains "%{_victim}%" or name of {_victim}:
+	#			remove {_attacker} from loop-value
+	#			delete loop-value
+
+on death:
+	remove victim from all bossbars

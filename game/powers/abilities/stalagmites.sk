@@ -1,0 +1,86 @@
+function spawnStalagmite(p: player, l: location, n: number):
+    set {_displays::*} to buildingToDisplay({structure::stalagmite%{_n}%::1}, {structure::stalagmite%{_n}%::2}, {structure::stalagmite%{_n}%::centre}, 1, {_l})
+    set {_root} to {_displays::1}
+
+    spawn block display at location 0.5 above {_root}:
+        set {_shadow-display} to event-entity
+        set shadow radius of {_shadow-display} to 0.75
+        set shadow strength of {_shadow-display} to 1
+
+    loop {_displays::*}:
+        set y component of display translation of loop-value to (y component of display translation of loop-value) - {_n}
+        set sky light override of loop-value to 15
+
+    if mod({_n}, 2) = 0:
+        throwOutFallingBlock({_l}, "up", 0.5)
+
+    set {_yaw} to random integer between 1 and 360
+    set yaw of {_l} to {_yaw}
+
+    groundShake(location 0.25 above block at {_l})
+
+    set {_pitch} to random integer between -90 and 0
+
+    #spawnFloatingBlock(location 1 above {_l}, dripstone block, 0.75, {_yaw}, {_pitch}, 40, 1)
+
+    loop 10 times:
+
+        #add 18 to yaw of {_l}
+        set {_vertOffset} to easeOutBounce(loop-value / 10)
+        set {_draw-l} to location {_vertOffset} above {_l}
+
+        draw 5 pointed dripstone block particle at {_draw-l}
+        draw 1 smoke particle with offset vector(0.5, 0.5, 0.5) with particle speed 0.1 at {_draw-l}
+        draw 1 crit particle with offset vector(0.5, 0.5, 0.5) with particle speed 0.1 at {_draw-l}
+
+        teleport {_root} to location {_n} above {_draw-l}
+
+        play sound "block.dripstone_block.place" at volume 2 at pitch 1.2 at {_draw-l}
+        play sound "block.netherrack.break" at volume 2 at pitch 1 at {_draw-l}
+        wait 1 tick
+
+        loop getLivingEntities({_p}, {_draw-l}, 3) where [input != {_p}]:
+
+            set {_ent} to loop-value-2
+
+            if {-hit::%{_p}%::%{_ent}%::stalagmites} is set:
+                time since {-hit::%{_p}%::%{_ent}%::stalagmites} < 20 ticks
+                continue
+    
+            set {-hit::%{_p}%::%{_ent}%::stalagmites} to now
+
+            makeDamage({_p}, {_ent}, {powerAttributes::stalagmites::damage}, "stalagmites")
+            applyPush({_ent}, (normalized vector from {_draw-l} to {_ent}) + vector(0, 1, 0), {_p}, "stalagmites")
+
+            play sound "entity.zombie.attack_wooden_door" at volume 2 at pitch 2 at {_draw-l}
+            play sound "enchant.thorns.hit" at volume 2 at pitch 1 at {_draw-l}
+
+    wait 20 ticks
+
+    loop 10 times:
+        draw 5 pointed dripstone block particle with offset vector(0.5, 0.5, 0.5) at {_l}
+        play sound "block.netherrack.break" at volume 1.5 at pitch 0.8 at {_l}
+        play sound "block.dripstone_block.break" at volume 1.5 at pitch 0.8 at {_l}
+        teleport {_root} to location ({_n} + 1) * (10 - loop-value) / 10 above {_l}
+        wait 1 tick
+
+    kill {_root}
+    kill {_shadow-display}
+
+function stalagmites(p: player):
+
+    set {_p}'s metadata "powerActive:stalagmites" to true
+
+    set {_l} to location of block 1 below {_p}
+    set yaw of {_l} to yaw of {_p}
+    set pitch of {_l} to 0
+
+    play sound "entity.villager.work_mason" at volume 3 at pitch 0.8 at {_l}
+
+    loop 6 times:
+        set {_temp-l} to location loop-value * 2 infront of {_l}
+        spawnStalagmite({_p}, {_temp-l}, loop-value)
+        play sound "block.amethyst_cluster.hit" at volume 2 at pitch 0.5 + loop-value / 6 at {_l}
+        wait 2 ticks
+
+    delete {_p}'s metadata "powerActive:stalagmites"

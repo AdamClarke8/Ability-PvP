@@ -1,0 +1,69 @@
+options:
+    speed: 0.875
+
+function barrel(p: player):
+    set {_l} to location 1 infront of location 1.3 above {_p}
+
+    play sound "entity.phantom.flap" at volume 2 at pitch 1.5 at {_l}
+    play sound "block.barrel.open" at volume 2 at pitch 1.5 at {_l}
+
+    spawn armor stand at {_l}:
+        set {_stand} to event-entity
+        add nbt compound of "{Invisible:1b,Invulnerable:1b}" to nbt compound of {_stand}
+
+    spawn item display at {_l}:
+        set {_barrel-display} to event-entity
+        set item of {_barrel-display} to barrel
+        set display scale of {_barrel-display} to vector(1.25, 1.25, 1.25)
+        set teleport duration of {_barrel-display} to 1 tick
+        set interpolation duration of {_barrel-display} to 1 tick
+        set shadow radius of {_barrel-display} to 1.25
+        set shadow strength of {_barrel-display} to 1
+
+    set {_v} to vector from yaw (yaw of {_p}) and pitch 0
+    set vector length of {_v} to {@speed}
+    push {_stand} in {_p}'s direction at speed 1
+
+    while {_stand} is alive:
+
+        loop-counter > 200:
+            exit loop
+
+        set {_temp-l} to location of {_stand}
+
+        set {_targets::*} to getLivingEntities({_p}, {_temp-l}, 2) where [input != {_p}]
+
+        if {_targets::*} is set:
+            exit loop
+
+        if {except::*} does not contain block 0.5 horizontally infront of {_stand}:
+            exit loop
+
+        set interpolation delay of {_barrel-display} to 0 ticks
+
+        set x component of velocity of {_stand} to x component of {_v}
+        set z component of velocity of {_stand} to z component of {_v}
+
+        teleport {_barrel-display} to {_stand}
+        set pitch of {_barrel-display} to -90
+        set yaw of {_barrel-display} to yaw of {_v} + 90
+        rotate {_barrel-display} around y-axis by 12 degrees
+
+        play sound "block.wood.hit" at volume 1.5 at pitch 0.8 at {_temp-l}
+        draw 1 barrel block particle with offset vector(1, 1, 1) at {_temp-l}
+        #draw 1 smoke at {_temp-l} with offset vector(1, 1, 1) with extra 0.05
+
+        wait 1 tick
+
+    loop {_targets::*}:
+        makeDamage({_p}, loop-value, {powerAttributes::barrel::damage}, "barrel")
+        applyPush(loop-value, (normalized vector from {_temp-l} to loop-value), {_p}, "barrel")
+        play sound "entity.player.attack.knockback" at volume 3 at pitch 1 at {_impact-l}
+
+    set {_impact-l} to location of {_stand}
+
+    draw 1 explosion particle at {_impact-l}
+    draw 3 crit particle with offset vector(1, 1, 1) with particle speed 0.5 at {_impact-l}
+    play sound "entity.zombie.attack_wooden_door" at volume 1.5 at pitch 1.2 at {_impact-l}
+    kill {_stand}
+    kill {_barrel-display}

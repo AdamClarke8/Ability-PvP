@@ -1,0 +1,45 @@
+function smokeBomb(p: player):
+    set {_l} to {_p}'s location
+    set {_range} to {powerAttributes::smoke-bomb::range}
+
+    set {_target} to getTargetLocation({_p}, {_range})
+
+    if {_target} is not set:
+        set {_target} to location {_range} infront of {_p}
+        set {_check-height} to true
+
+    set yaw of {_target} to yaw of {_p}
+    set pitch of {_target} to pitch of {_p}
+
+    teleport {_p} to {_target}
+
+    if {_check-height} = true:
+
+        set {_ray} to ray trace from eyes of {_p} along (vector between eyes of {_p} and {_p}) with max distance 2 while ignoring passable blocks while ignoring entities
+        
+        ray trace hit location of {_ray} is set
+        set {_dist} to distance between eyes of {_p} and ray trace hit location of {_ray}
+        set {_target} to location (distance between eyes of {_p} and {_p}) - {_dist} above {_target}
+        teleport {_p} to {_target}
+
+    loop getPlayers({_p}, {_l}, 3) where [input != {_p}]:
+        apply potion effect of blindness to loop-value for 2 seconds:
+            hide particles
+
+    loop getPlayers({_p}, {_target}, 3) where [input != {_p}]:
+        apply potion effect of blindness to loop-value for 2 seconds:
+            hide particles
+
+    play sound "entity.generic.explode" at volume 3 at pitch 1.5 at {_target}
+    play sound "entity.breeze.idle_ground" at volume 3 at pitch 2 at {_target}
+    play sound "block.trial_spawner.ominous_activate" at volume 3 at pitch 1.5 at {_target}
+    play sound "block.fire.extinguish" at volume 3 at pitch 1.2 at {_target}
+
+    spawnFloatingBlockCluster({_l}, {heads::gray-orb}, 6, 4, 25, 0.2)
+    spawnFloatingBlockCluster({_target}, {heads::gray-orb}, 6, 4, 25, 0.2)
+
+    loop 36 times:
+        set {_v} to spherical vector radius 3, yaw loop-value * 10, pitch 0
+        if mod(loop-value, 2) = 0:
+            draw 0 campfire cosy smoke particle with offset {_v} with particle speed 0.125 at location 0.5 above {_target} ~ {_v}
+        draw 0 firework particle with offset {_v} with particle speed 0.125 at location 0.5 above {_target} ~ {_v}

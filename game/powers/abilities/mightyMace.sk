@@ -1,0 +1,205 @@
+options:
+    mace-frame-radius: 4
+    mace-frame-velocity: 12
+    mace-scale: 4
+    crater-blocks: stone, andesite, lapis ore, deepslate
+    crater-lifetime: 40
+
+function mightyMaceFrame(l: location):
+    set {_l} to location 0.5 below {_l}
+    set yaw of {_l} to 0
+    set pitch of {_l} to 0
+
+    loop 24 times:
+        spawn text display at {_l}:
+            set {_display} to event-entity
+            set text of {_display} to "▲"
+            set display scale of {_display} to vector(4.5, 1.5, 4.5) * {@mace-frame-radius} * 0.75
+            set billboard of {_display} to fixed
+            set teleport duration of {_display} to 1 tick
+            set interpolation duration of {_display} to 1 tick
+            set color of {_display} to rgb(0, 0, 0, 0)
+            set sky light override of {_display} to 15
+        set {_displays::%loop-value%} to {_display}
+
+    loop 60 times:
+        if loop-value <= 10:
+            set {_radius} to {@mace-frame-radius} * sin(90 * loop-value / 10)
+        else:
+            set {_radius} to {@mace-frame-radius}
+            set {_opacity} to 255 + ((loop-value - 40) * (27 - 255) / 20)
+        loop 24 times:
+            set interpolation delay of {_displays::%loop-value-2%} to 0 ticks
+            set display opacity of {_displays::%loop-value-2%} to {_opacity}
+            set {_yaw} to (loop-value-1) * {@mace-frame-velocity} + (loop-value-2) * 30
+            set {_v} to spherical vector radius {_radius}, yaw {_yaw}, pitch 0
+            teleport {_displays::%loop-value-2%} to {_l} ~ {_v}
+            if loop-value-2 < 13:
+                set right transformation rotation of {_displays::%loop-value-2%} to axisAngle({_yaw} * -1, vector(0, 1, 0))
+            else:
+                set right transformation rotation of {_displays::%loop-value-2%} to axisAngle(180 - {_yaw}, vector(0, 1, 0))
+        wait 1 tick
+
+    kill {_displays::*}
+
+function mightyMaceSpawnCraterBlock(l: location, n: number):
+
+    if block at {_l} != air:
+        set {_l} to location 1 above {_l}
+
+    else:
+        while {except::*} contains block 1 below {_l}:
+            set {_l} to location 1 below {_l}
+            if loop-counter > 2:
+                stop
+
+    spawn block display at location 0.5 below {_l}:
+        set {_display} to event-entity
+
+        set {_type} to random element of {@crater-blocks}
+        set block data of {_display} to "%{_type}%" parsed as block data
+
+        set display scale of {_display} to vector(0, 0, 0)
+        set display translation of {_display} to vector(-0.625, 0, -0.625)
+        set interpolation duration of {_display} to 1 ticks
+        set teleport duration of {_display} to 1 ticks
+        set sky light override of {_display} to 15
+
+        set {_angle} to (random integer between -300 and 300) / 10
+        rotate {_display} around vector(0, 1, 0) by {_angle} degrees
+        rotate {_display} around vector(1, 0, 0) by {_angle} degrees
+
+
+    loop 10 times:
+        set {_prog} to loop-value / 10
+        set {_n} to easeInOutCubic({_prog})
+        set {_scale} to 1.25*{_n}
+
+        set interpolation delay of {_display} to 0 ticks
+        set transformation scale of {_display} to vector({_scale}, {_scale}, {_scale})
+
+        wait 1 tick
+
+    wait ({@crater-lifetime} + 10 + {_n}) * 1 ticks # +30 is now +10 to accomodate for the fadein/out loops
+
+    loop 10 times:
+        set {_prog} to loop-value / 10
+        set {_n} to 1 - easeInBack({_prog})
+        set {_scale} to 1.25*{_n}
+
+        set interpolation delay of {_display} to 0 ticks
+        set transformation scale of {_display} to vector({_scale}, {_scale}, {_scale})
+
+        wait 1 tick
+
+    kill {_display}
+    draw 5 {_type} block particle with offset vector(1, 1, 1) at {_l}
+    play sound (break sound of {_type}) at volume 1.5 at pitch 0.8 at {_l}
+
+
+
+function mightyMaceHitAnim(l: location):
+
+    mightyMaceFrame({_l})
+    groundShakeArea({_l}, 4)
+    fallingDebris({_l}, 2, 1.25)
+
+    create explosion of force 2 at {_l}
+    draw 100 mace item particle with offset vector(0, 0.5, 0) with particle speed 0.25 at location 1 above {_l}
+
+    play sound "entity.iron_golem.repair" at volume 3 at pitch 0.5 at {_l}
+    play sound "block.trial_spawner.ominous_activate" at volume 3 at pitch 1 at {_l}
+
+    loop 16 times:
+        set {_v} to spherical vector radius {@mace-frame-radius} + 1, yaw (loop-value) * 360 / 16, pitch 0
+        mightyMaceSpawnCraterBlock({_l} ~ {_v}, loop-value)
+
+    loop 3 times:
+        loop 180 times:
+            set {_v} to spherical vector radius {@mace-frame-radius}, yaw (loop-value-2) * 2, pitch 0
+            draw 0 smoke particle with offset {_v} with particle speed 0.25 at location 1 above {_l} ~ {_v}
+        wait 2 ticks
+
+
+function mightyMace(p: player):
+    set {_l} to location 0.8 above location 1.5 horizontally infront {_p}
+    set yaw of {_l} to yaw of {_l} - 90
+
+    spawn item display at {_l}:
+        set {_display} to event-entity
+        set item of {_display} to mace
+        set display scale of {_display} to vector(0, 0, 0)
+        set display translation of {_display} to vector(0, {@mace-scale} / 2, 0)
+        set teleport duration of {_display} to 1 tick
+        set interpolation duration of {_display} to 1 ticks
+        set sky light override of {_display} to 15
+
+    set yaw of {_l} to yaw of {_l} + 90
+    set pitch of {_display} to 0
+
+    rotate {_display} around vector(0, 0, 1) by -45 - (pitch of {_display})
+    set {_prev-pitch} to 0
+
+    # fade in
+    loop 5 times:
+        set {_prog} to loop-value / 5
+        set {_n} to easeInOutCubic({_prog})
+        set {_scale} to {@mace-scale} * {_n}
+        
+        set interpolation delay of {_display} to 0 ticks
+        set transformation scale of {_display} to vector({_scale}, {_scale}, {_scale})
+
+        wait 1 tick
+
+    loop 30 times:
+
+        set interpolation delay of {_display} to 0 tick
+
+        if loop-value < 12:
+            play sound "item.trident.hit_ground" at volume 1.5 at pitch 1 + easeOutBounce(loop-value / 30) at {_l}
+            play sound "entity.iron_golem.attack" at volume 2 at pitch 1 + easeOutBounce(loop-value / 30) at {_l}
+
+            set {_l} to location 0.8 above location 2.5 horizontally infront {_p}
+            set yaw of {_l} to yaw of {_l} - 90
+            set pitch of {_l} to 0
+            teleport {_display} to {_l}
+
+        else if loop-value = 12:
+            set yaw of {_l} to yaw of {_l} + 90
+            set {_impact-l} to location 2.5 + {@mace-scale} / 2 horizontally infront {_p}
+
+            loop getLivingEntities({_p}, {_impact-l}, {@mace-frame-radius}) where [input != {_p}]:
+
+                set {_ent} to loop-value-2
+                makeDamage({_p}, {_ent}, {powerAttributes::mighty-mace::damage}, "mighty-mace")
+                applyPush({_ent}, (normalized vector from {_impact-l} to {_ent}) * 1.5, {_p}, "mighty-mace")
+
+                draw 10 crit particle with offset vector(1, 1, 1) with particle speed 0.5 at {_ent}
+                play sound "enchant.thorns.hit" at volume 3 at pitch 1.2 at {_ent}
+                play sound "entity.player.attack.crit" at volume 3 at pitch 1.2 at {_ent}
+
+            mightyMaceHitAnim({_impact-l})
+            set yaw of {_l} to yaw of {_l} - 90
+
+        set {_pitch} to 105 * easeOutBounce(loop-value / 30)
+        if loop-value >= 12:
+            set {_pitch} to 105 - (105 - {_pitch}) ^ 0.75
+        set {_angle} to {_pitch} - {_prev-pitch}
+        rotateOnRollAxis({_display}, {_angle}, vector(0, 0, 1))
+
+        wait 1 tick
+        set {_prev-pitch} to {_pitch}
+
+    wait 30 ticks
+
+    loop 10 times:
+        set {_prog} to loop-value / 10
+        set {_n} to 1 - easeInBack({_prog})
+        set {_scale} to {@mace-scale}*{_n}
+
+        set interpolation delay of {_display} to 0 ticks
+        set transformation scale of {_display} to vector({_scale}, {_scale}, {_scale})
+
+        wait 1 tick
+
+    kill {_display}

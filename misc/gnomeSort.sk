@@ -1,0 +1,47 @@
+function sortArrayCompareAscending(arr: objects, comp: objects) :: objects:
+    # gnome sort
+    set {_n} to size of {_arr::*}
+    set {_idx} to 1
+    if size of {_arr::*} = 1:
+        return {_arr::*}
+    while {_idx} < {_n} + 1:
+        if loop-counter > 50:
+            exit loop
+        if {_idx} = 1:
+            add 1 to {_idx}
+        if {_comp::%{_idx}%} >= {_comp::%{_idx} - 1%}:
+            add 1 to {_idx}
+        else:
+            set {_temp} to {_arr::%{_idx}%}
+            set {_arr::%{_idx}%} to {_arr::%{_idx} - 1%}
+            set {_arr::%{_idx} - 1%} to {_temp}
+
+            set {_temp} to {_comp::%{_idx}%}
+            set {_comp::%{_idx}%} to {_comp::%{_idx} - 1%}
+            set {_comp::%{_idx} - 1%} to {_temp}
+            subtract 1 from {_idx}
+    return {_arr::*}
+
+function sortArrayCompareDescending(arr: objects, comp: objects) :: objects:
+    # gnome sort
+    set {_n} to size of {_arr::*}
+    set {_idx} to 1
+    if size of {_arr::*} = 1:
+        return {_arr::*}
+    while {_idx} < {_n} + 1:
+        if loop-counter > 50:
+            exit loop
+        if {_idx} = 1:
+            add 1 to {_idx}
+        if {_comp::%{_idx}%} <= {_comp::%{_idx} - 1%}:
+            add 1 to {_idx}
+        else:
+            set {_temp} to {_arr::%{_idx}%}
+            set {_arr::%{_idx}%} to {_arr::%{_idx} - 1%}
+            set {_arr::%{_idx} - 1%} to {_temp}
+
+            set {_temp} to {_comp::%{_idx}%}
+            set {_comp::%{_idx}%} to {_comp::%{_idx} - 1%}
+            set {_comp::%{_idx} - 1%} to {_temp}
+            subtract 1 from {_idx}
+    return {_arr::*}

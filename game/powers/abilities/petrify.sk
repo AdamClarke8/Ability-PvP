@@ -1,0 +1,158 @@
+options:
+    radius: 7
+
+function petrifyShockwave(l: location, n: number): 
+
+    set {_ring-display} to spawnTextRing({_l}, "&f", 1)
+
+    set {_orig-scale} to display scale of {_ring-display}
+    set {_orig-translation} to display translation of {_ring-display}
+
+    loop 20 times:
+        
+        set display opacity of {_ring-display} to 255 + (loop-value * (27 - 255) / 20)
+        set yaw of {_ring-display} to loop-value * 8
+
+        set {_radius-offset} to ({@radius} - 1) * loop-value / (20 / 3)
+        set display scale of {_ring-display} to {_orig-scale} * (1 + {_radius-offset})
+        set display translation of {_ring-display} to {_orig-translation} * (1 + {_radius-offset})
+
+        wait 1 tick
+
+    kill {_ring-display}
+
+function petrify(p: player):
+
+    set {-power-active::%{_p}%::petrify} to true
+    set {-powers-locked::%{_p}%} to true
+
+    spawn item display at {_p}:
+        set {_display} to event-entity
+        set item of {_display} to {heads::stone}
+        set display scale of {_display} to vector(3, 3, 3)
+        set display translation of {_display} to vector(0, 0.75, 0)
+        set teleport duration of {_display} to 1 tick
+        set interpolation duration of {_display} to 1 tick
+        set shadow radius of {_display} to 1.25
+        set shadow strength of {_display} to 1
+
+    spawn armor stand at {_p}:
+        set {_stand} to event-entity
+        set generic scale attribute of {_stand} to 0.25
+        add nbt compound of "{Invisible:1b,Invulnerable:1b,Silent:1b}" to nbt compound of {_stand}
+        set {-is-petrify-stand::%{_stand}%} to true
+
+    set velocity of {_stand} to velocity of {_p}
+
+    make {_display} ride {_stand}
+    make {_p} ride {_stand}
+
+    send action bar "" to {_p}
+
+    #set yaw of {_display} to 0
+    #set {_prev-yaw} to 0
+
+    applyInvis({_p})
+
+    play sound "entity.horse.armor" at volume 2 at pitch 1.2 at {_p}
+    play sound "item.spear.attack" at volume 2 at pitch 0.8 at {_p}
+
+    draw 5 cloud particle with offset vector(2, 2, 2) with particle speed 0.05 at {_p}
+    startDuration({_p}, "petrify", 100 ticks)
+
+    while {-power-active::%{_p}%::petrify} = true:
+
+        if loop-counter > 100:
+            exit loop
+
+        if y-coord of {_p} < (y-coord of getCurrentMapCentre(getLobby({_p})) - 10):
+            set {_hit-void} to true
+            exit loop
+
+        set interpolation delay of {_display} to 1 tick
+        set {_temp-l} to location of {_stand}
+
+        if {_temp-l} != {_prev-l}:
+
+            # disable physics if inside of UFO
+
+            set {_ray} to ray trace from (location 0.25 below head of {_stand}) along {_vel} with max distance 2 while ignoring passable blocks
+            ray trace hit block of {_ray} is set
+            set {_face} to ray trace hit blockface of {_ray}
+
+            if {_face} is set:
+
+                if {_face} = east_face or west_face:
+                    set x component of (velocity of {_stand}) to (x component of {_vel}) * -1
+
+                else if {_face} = south_face or north_face:
+                    set z component of (velocity of {_stand}) to (z component of {_vel}) * -1
+
+                if {_face} = up_face or down_face:
+                    add 1 to {_vert-bounces}
+                    set y component of velocity of {_stand} to (1 / {_vert-bounces}) * (y component of {_vel}) * -1
+
+                if {_vel-mag} > 0.25:
+                    draw 10 stone block particle with offset vector(1, 1, 1) at {_temp-l}
+                    draw 5 crit particle with offset vector(1, 1, 1) with particle speed 0.25 at {_temp-l}
+                    play sound "entity.player.attack.knockback" at volume 2 at pitch 1.2 at {_temp-l}
+        #if {_stand} is on ground:
+        #    set y component of velocity of {_stand} to (y component of {_prev-vel}) * -1
+
+        set {_vel} to {_vel} - ({_vel} - velocity of {_stand}) * 0.1
+
+        set {_vel-mag} to getMagnitude({_vel})
+
+        if {_vel-mag} > 0.1:
+            add 6 * {_vel-mag} to yaw of {_display}
+            add 2 * {_vel-mag} to pitch of {_display}
+
+        wait 1 tick
+
+        set {_prev-vel} to {_vel}
+        set {_prev-l} to {_temp-l}
+
+    teleport {_p} to location 0.5 above {_p}
+
+    set {_impact-l} to location of {_stand}
+
+    draw 1 explosion particle at {_impact-l} 
+    draw 10 stone block particle with offset vector(1, 1, 1) at {_impact-l} 
+    play sound "entity.zombie_villager.cure" at volume 2 at pitch 2 at {_impact-l}
+    play sound "entity.generic.explode" at volume 3 at pitch 1 at {_impact-l}
+    #play sound "entity.illusioner.cast_spell" at volume 2 at pitch 1.2 at {_impact-l}
+
+    loop getLivingEntities({_p}, {_impact-l}, {@radius}) where [input != {_p}]:
+        makeDamage({_p}, loop-value, {powerAttributes::petrify::damage}, "petrify")
+        applyPush(loop-value, (normalized vector from {_impact-l} to loop-value) * 1.25 + vector(0, 0.5, 0), {_p}, "petrify")
+        draw 10 crit particle with offset vector(1, 1, 1) with particle speed 0.5 at head of loop-value
+        play sound "enchant.thorns.hit" at volume 3 at pitch 1 at loop-value
+
+    removeInvis({_p})
+    kill {_display}
+    clear passengers of {_stand}
+    kill {_stand}
+
+    delete {-power-active::%{_p}%::petrify}
+    delete {-powers-locked::%{_p}%}
+
+    if {_hit-void} = true:
+        draw 10 crit particle with offset vector(1, 1, 1) with particle speed 0.25 at {_p}
+        play sound "enchant.thorns.hit" at volume 3 at pitch 1.2 at {_p}
+        wait 1 tick
+        applyPush({_p}, vector(0, 2, 0), {_p}, "petrify")
+
+    loop 3 times:
+
+        play sound "entity.villager.work_mason" at volume 2 at pitch 1.5 - loop-value / 6 at {_impact-l}
+        petrifyShockwave({_impact-l}, loop-value)
+        #loop 180 times:
+        #    set {_v} to spherical vector radius 2, yaw (loop-value-2) * 2, pitch 0
+        #    draw 0 smoke particle with offset {_v} with particle speed 0.5 at {_impact-l} ~ {_v}
+            #draw 0 item using anvil at {_impact-l} ~ {_v} with offset {_v} with particle speed 0.5
+
+        wait 3 ticks
+
+on dismount:
+    if {-is-petrify-stand::%vehicle of event-entity%} = true:
+        cancel event

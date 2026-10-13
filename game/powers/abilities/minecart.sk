@@ -1,0 +1,134 @@
+function minecartSpawnRail(l: location):
+
+    #set pitch of {_l} to 0
+    #set y-coord of {_l} to y-coord of block at {_l}
+
+    spawn block display at {_l}:
+        set {_display} to event-entity
+        chance of 35%:
+            chance of 50%:
+                set block data of {_display} to powered_rail[powered=true]
+            else:
+                set block data of {_display} to detector rail
+        else:
+            set block data of {_display} to rail
+        set display scale of {_display} to vector(1.5, 1.5, 1.5)
+        set display translation of {_display} to vector(-0.75, -0.75, -0.75)
+
+    loop 10 times:
+        if loop-value < 5:
+            set {_angle} to loop-value * -3
+
+        else if loop-value <= 10:
+            if loop-value = 5:
+                play sound "block.stone.place" at volume 1.5 at pitch 0.8 at {_l}
+            set {_angle} to (10 - loop-value) * -5
+
+        set {_vertOffset} to easeOutBounce(loop-value / 10) * 1.5
+        teleport {_display} to location 2.25 - {_vertOffset} above {_l}
+        set right transformation rotation of {_display} to axisAngle({_angle}, vector(1, 0, 0))
+        wait 1 tick
+
+    wait 40 ticks
+    kill {_display}
+
+function minecart(p: player):
+
+    #set {_p}'s metadata "powersLocked" to true
+    set {-power-active::%{_p}%::minecart} to true
+
+    set {_l} to {_p}'s location
+    set pitch of {_l} to 0
+
+    spawn regular minecart at {_l}:
+        set {_minecart} to event-entity
+        set {-is-minecart-power::%{_minecart}%} to true
+
+    spawn armor stand at {_l}:
+        set {_stand} to event-entity
+        add nbt compound of "{Invisible:1b,Invulnerable:1b}" to nbt compound of {_stand}
+
+    make {_p} ride {_minecart}
+    send action bar "" to {_p}
+
+    set {_temp-l} to {_l}
+
+    play sound "entity.horse.armor" at volume 2 at pitch 1.2 at {_p}
+    play sound "entity.blaze.shoot" at volume 2 at pitch 1.5 at {_p}
+
+    #apply speed 2 without particles to {_p} for 10 ticks
+
+    loop 10 times:
+
+        if {except::*} does not contain block 0.5 above block 1 horizontally infront of {_p}:
+            exit loop
+
+        set {_temp-l} to location of {_stand}
+
+        set {_v} to vector from yaw (yaw of {_l}) and pitch 0
+
+        set vector length of {_v} to 1.5
+        set velocity of {_stand} to {_v}
+
+        minecartSpawnRail(location 6 infront of {_temp-l})
+        draw 5 deepslate block particle with particle speed 0.1 at location 6 infront of {_temp-l}
+        add 90 to yaw of {_temp-l}
+        teleport {_minecart} to {_temp-l}
+
+        set {_targets::*} to getLivingEntities({_p}, {_temp-l}, 2.5) where [input != {_p}]
+        {_targets::*} is set:
+            exit loop
+
+        play sound "entity.iron_golem.attack" at volume 1.5 at pitch 1 + loop-value / 10 at {_p}
+        play sound "entity.breeze.charge" at volume 1.5 at pitch 1 + loop-value / 10 at {_p}
+
+        #draw 1 gust at {_temp-l} with offset vector(0.5, 0.5, 0.5)
+
+        wait 1 tick
+
+    if {_targets::*} is set:
+        set {_target} to getNearest({_temp-l}, {_targets::*})
+        makeDamage({_p}, {_target}, {powerAttributes::minecart::damage}, "minecart")
+        applyPush({_target}, (normalized vector from {_p} to {_target}) + vector(0, 0.5, 0), {_p}, "minecart")
+        draw 10 crit particle with offset vector(0.5, 0.5, 0.5) with particle speed 0.5 at {_target}
+        draw 1 sweep attack particle with offset vector(0.5, 0.5, 0.5) at {_target}
+        play sound "entity.iron_golem.repair" at volume 1.5 at pitch 1.2 at {_target}
+        play sound "entity.player.attack.knockback" at volume 1.5 at pitch 1.2 at {_target}
+
+    play sound "item.trident.hit_ground" at volume 1.5 at pitch 0.8 at {_p}
+    play sound "block.fire.extinguish" at volume 2 at pitch 1 at {_p}
+
+    loop 36 times:
+        set {_v} to spherical vector radius 2, yaw (loop-value-2) * 10, pitch 0
+        draw 0 smoke particle with offset {_v} with particle speed 0.25 at location 0.5 above {_temp-l} ~ {_v}
+
+    loop 10 times:
+
+        set {_temp-l} to location of {_stand}
+
+        draw 1 crit particle with offset vector(0.5, 0.5, 0.5) with particle speed 0.1 at {_stand} 
+        draw 1 flame particle with offset vector(0.5, 0.5, 0.5) with particle speed 0.1 at {_stand}
+
+        set {_v} to vector from yaw (yaw of {_l}) and pitch 0
+        set vector length of {_v} to 0.15 * (10 - loop-value)
+        set x component of velocity of {_stand} to x component of {_v}
+        set z component of velocity of {_stand} to z component of {_v}
+        teleport {_minecart} to {_stand}
+
+        play sound "entity.iron_golem.attack" at volume 1.5 at pitch 1.5 - loop-value / 10 at {_p}
+        wait 1 tick
+
+    draw 10 deepslate block particle with offset vector(0.5, 0.5, 0.5) at {_p}
+    kill {_minecart}
+    kill {_stand}
+    set {_temp-l} to location of {_stand}
+    set yaw of {_temp-l} to yaw of {_p}
+    set pitch of {_temp-l} to pitch of {_p}
+    teleport {_p} to {_temp-l}
+
+    #delete {_p}'s metadata "powersLocked"
+    delete {-power-active::%{_p}%::minecart}
+
+on dismount:
+    if {-is-minecart-power::%vehicle of event-entity%} = true:
+        cancel event

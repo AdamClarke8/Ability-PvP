@@ -1,0 +1,24 @@
+local function convertDate(raw: text) :: object:
+	set {_temp::*} to {_raw} split at "-"
+	set {_day} to {_temp::1} parsed as integer
+	set {_month} to {_temp::2} parsed as integer
+	set {_year} to {_temp::3} parsed as integer
+	set {_date} to date({_year}, {_month}, {_day})
+	return {_date}
+
+function addToStat(p: player, gamemode: text, stat: text, val: number = 1, date: text = "N/A"):
+	if {_date} = "N/A":
+		set {_date} to now formatted as "dd-MM-YYYY"
+	add {_val} to {stats::%{_p}%::%{_gamemode}%::%{_stat}%::%{_date}%}
+
+function setStat(p: player, gamemode: text, stat: text, val: number, date: text = "N/A"):
+	if {_date} = "N/A":
+		set {_date} to now formatted as "dd-MM-YYYY"
+	set {stats::%{_p}%::%{_gamemode}%::%{_stat}%::%{_date}%} to {_val}
+
+function getStat(p: player, gamemode: text, stat: text, window: timespan = 30 days) :: number:
+	loop indices of {stats::%{_p}%::%{_gamemode}%::%{_stat}%::*}:
+		set {_date} to convertDate(loop-value)
+		if (time since {_date}) < {_window}:
+			add {stats::%{_p}%::%{_gamemode}%::%{_stat}%::%loop-value%} to {_total}
+	return {_total}

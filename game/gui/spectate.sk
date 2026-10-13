@@ -1,0 +1,83 @@
+options:
+	spectate-prefix: &b&lSPECTATE &7»
+
+function sendSpectatorTitle(p: players):
+	set {_sprite} to object text component with atlas "gui" with sprite "mob_effect/levitation"
+	set {_text} to "&fSPECTATOR MODE"
+	send title component {_sprite} to {_p::*} for 20 ticks
+	send subtitle {_text} to {_p::*} for 20 ticks
+
+function enterPseudoSpectatorMode(p: player):
+	set {-is-spectating::%{_p}%} to true
+	set gamemode of {_p} to adventure
+	make {_p} start flying
+	make {_p} disappear for all players
+	wait 1 tick
+	applyInvis({_p})
+
+function exitPseudoSpectatorMode(p: player):
+	delete {-is-spectating::%{_p}%}
+	set gamemode of {_p} to adventure
+	removeInvis({_p})
+	make {_p} stop flying
+	make {_p} appear for getPlayers(getLobby({_p}))
+
+function enterSpectate(p: player, lobby: text):
+	#set gamemode of {_p} to adventure
+	enterPseudoSpectatorMode({_p})
+
+	teleport {_p} to location 16 above getCurrentMapCentre({_lobby})
+	deleteScreenDisplay({_p})
+	sendSpectatorTitle({_p})
+	if {-selection-in-progress::%{_lobby}%} = true:
+		deleteScreenDisplay({_p})
+		removeInvis({_p})
+		if {-selecting-gamemode::%{_lobby}%} = true:
+			clearVoteGamemode({_p}, {_lobby})
+		else if {-selecting-map::%{_lobby}%} = true:
+			clearVoteMap({_p}, {_lobby})
+
+function exitSpectate(p: player, lobby: text):
+	exitPseudoSpectatorMode({_p})
+	if any:
+		{-selection-in-progress::%{_lobby}%} = true
+		{-gamemode::%{_lobby}%} is set
+		gameIsRunning({_lobby}) = true
+		{-showing-results::%{_lobby}%} = true
+	then:
+		enterMatch({_p}, {_lobby})
+	else:
+		set gamemode of {_p} to adventure
+		teleport {_p} to location 1 above getCurrentMapCentre({_lobby})
+		
+command /spectate:
+	permission: spectate
+	trigger:
+		set {_lobby} to getLobby(player)
+		if gameIsRunning({_lobby}) = true:
+			error(player, "&cYou can't spectate while the match is ongoing!")
+			stop
+		if {-is-spectating::%player%} = true:
+			exitSpectate(player, {_lobby})
+			send "{@spectate-prefix} &fExited spectator mode!"
+			play sound "block.note_block.flute" at volume 10 at pitch 1 to player
+			stop
+		enterSpectate(player, {_lobby})
+		send "{@spectate-prefix} &fEntered spectator mode!"
+		play sound "block.note_block.flute" at volume 10 at pitch 1.2 to player
+
+command /unspectate:
+	permission: spectate
+	aliases: exit-spectate
+	trigger:
+		set {_lobby} to getLobby(player)
+		if gameIsRunning({_lobby}) = true:
+			error(player, "&cYou can't unspectate while the match is ongoing!")
+			stop
+		if {-is-spectating::%player%} != true:
+			error(player, "&cYou are not spectating!")
+			stop
+		exitSpectate(player, {_lobby})
+		send "{@spectate-prefix} &fExited spectator mode!"
+		play sound "block.note_block.flute" at volume 10 at pitch 1 to player
+

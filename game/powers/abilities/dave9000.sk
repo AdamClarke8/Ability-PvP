@@ -1,0 +1,463 @@
+function spawnLaserDisplay(l: location, blockData: block data) :: entity:
+    spawn block display at {_l}:
+        set {_display} to event-entity
+        set block data of {_display} to {_blockData}
+        set sky light override of {_display} to 15
+        set display scale of {_display} to vector(1, 1, 4)
+        set display translation of {_display} to vector(-0.5, -0.5, -2)
+        set teleport duration of {_display} to 1 tick
+    return {_display}
+
+function dave9000Laser(p: player):
+    laserEye({_p}, 1)
+    laserEye({_p}, -1)
+
+function laserEye(p: player, offset: number):
+
+    play sound "entity.illusioner.prepare_blindness" at volume 2 at pitch 1.2 at {_p}
+
+    set {_l} to location {_offset} left of location 1.7 above {_p}
+    set {_tempLoc} to {_l}
+    set {_vel} to 2
+
+    chance of 50%:
+        set {_laser} to spawnLaserDisplay({_l}, red stained glass)
+    else:
+        set {_laser} to spawnLaserDisplay({_l}, orange stained glass)
+
+    while {except::*} contains block at {_tempLoc}:
+
+        set interpolation delay of {_laser} to 0 ticks
+
+        loop-counter >= 50:
+            exit loop
+    
+        loop 4 times:
+            set {_tempLoc} to location {_vel} / 4 infront of {_tempLoc}
+            set {_targets::*} to getLivingEntities({_p}, {_tempLoc}, 3) where [input != {_p}]
+            {_targets::*} is set:
+                exit all loops
+
+        teleport {_laser} to {_tempLoc}
+
+        play sound "block.note_block.bit" at volume 1.25 at pitch 1.2 at {_tempLoc}
+
+        wait 1 tick
+
+    kill {_laser}
+    set {_targetBlock} to block at {_tempLoc}
+
+    set {_targets::*} to getLivingEntities({_p}, {_tempLoc}, 3) where [input != {_p}]
+    loop {_targets::*}:
+        makeDamage({_p}, loop-value, {powerAttributes::dave-9000::laser-damage}, "dave-9000;laser")
+    
+    size of (block displays in radius 1 of {_tempLoc} where [block data of input = block data of {_targetBlock}]) = 0:
+        draw 1 explosion particle at {_targetBlock}
+        draw 1 lava particle at {_targetBlock}
+        groundShake({_targetBlock})
+    
+        throwOutFallingBlock({_targetBlock}, "up", 0.5)
+
+        chance of 33%:
+            spawnFloatingBlockCluster({_targetBlock}, {heads::light-gray-orb}, 2, 1.5, 60, 0.5, 0.1)
+
+    play sound "entity.generic.explode" at volume 2 at pitch 1.2 at {_targetBlock}
+
+    {_targets::*} is set:
+        chance of 50%:
+            play sound "entity.ravager.celebrate" at volume 3 at pitch 1.5 at {_p}
+
+function dave9000SpawnFrame(p: player, l: location):
+    while {-winding-up::%{_p}%::dave-9000} = true:
+        loop 36 times:
+            set {_v} to spherical vector radius 4, yaw loop-counter-1 * 36 + loop-value-2, pitch 0
+            set {_l2} to {_l} ~ {_v}
+            if mod(loop-value, 2) = 0:
+                draw 1 rgb(105, 104, 104) dust particle of size 2.5 at {_l2}
+                draw 1 enchanting particle at {_l2}
+            else:
+                draw 1 rgb(77, 76, 76) dust particle of size 2.5 at {_l2}
+                draw 1 netherite block block particle at {_l2}
+            if mod(loop-value, 9) = 0:
+                draw 1 flame particle with particle speed 0.05 at {_l2}
+
+        play sound "entity.breeze.land" at volume 3 at pitch 0.5 + loop-counter / 60 at {_l2}
+        play sound "entity.illusioner.prepare_mirror" at volume 1 at pitch 0.5 + loop-counter / 60 at {_l2}
+
+        if loop-counter < 60:
+
+            if mod(loop-counter, 4) = 0:
+                play sound "entity.wither.break_block" at volume 2 at pitch 1.2 at {_l2}
+
+            if mod(loop-counter, 2) = 0:
+                chance of 10%:
+                    play sound "block.anvil.place" at volume 2 at pitch 1.2 at {_l2}
+                chance of 10%:
+                    play sound "entity.villager.work_fletcher" at volume 2 at pitch 1.2 at {_l2}
+                chance of 10%:
+                    play sound "entity.villager.work_mason" at volume 2 at pitch 1.2 at {_l2}
+                chance of 10%:
+                    play sound "block.piston.extend" at volume 2 at pitch 1.2 at {_l2}
+                chance of 10%:
+                    play sound "item.trident.hit_ground" at volume 2 at pitch 1.2 at {_l2}
+                chance of 10%:
+                    play sound "block.iron_trapdoor.close" at volume 2 at pitch 1.2 at {_l2}
+
+        else if loop-counter = 65:
+            play sound "item.trident.thunder" at volume 3 at pitch 2 at {_l}
+            draw 1 black flash particle at location 3.5 above {_l}
+
+        wait 1 tick
+
+# NOT USED
+
+#function applyBrightnessGradient(display: entity):
+#	loop 5 times:
+#		set display brightness of {_display} to displayBrightness(0 + loop-value * 2, 10)
+#		wait 2 ticks
+#	delete display brightness of {_display}
+
+on script load:
+    delete {action-bar-text::dave-9000::*}
+    set {action-bar-text::dave-9000::1} to "<##FF0000>RIGHT CLICK TO SHOOT LASER"
+    set {action-bar-text::dave-9000::2} to "<##FF0000>RIGHT CLICK TO SHOOT LASER"
+    set {action-bar-text::dave-9000::3} to "<##FF0000>RIGHT CLICK TO SHOOT LASER"
+    set {action-bar-text::dave-9000::4} to "<##FF0000>RIGHT CLICK TO SHOOT LASER"
+    set {action-bar-text::dave-9000::5} to "<##FF2900>RIGHT CLICK TO SHOOT LASER"
+    set {action-bar-text::dave-9000::6} to "<##FF1500>RIGHT CLICK TO SHOOT LASER"
+    set {action-bar-text::dave-9000::7} to "<##FF3E00>RIGHT CLICK TO SHOOT LASER"
+    set {action-bar-text::dave-9000::8} to "<##FF5D00>RIGHT CLICK TO SHOOT LASER"
+    set {action-bar-text::dave-9000::9} to "<##FF7200>RIGHT CLICK TO SHOOT LASER"
+    set {action-bar-text::dave-9000::10} to "<##FF8600>RIGHT CLICK TO SHOOT LASER"
+    set {action-bar-text::dave-9000::11} to "<##FF9B00>RIGHT CLICK TO SHOOT LASER"
+    set {action-bar-text::dave-9000::12} to "<##FFB000>RIGHT CLICK TO SHOOT LASER"
+    set {action-bar-text::dave-9000::13} to "<##FFC400>RIGHT CLICK TO SHOOT LASER"
+    set {action-bar-text::dave-9000::14} to "<##FFE300>RIGHT CLICK TO SHOOT LASER"
+    set {action-bar-text::dave-9000::15} to "<##FFF800>RIGHT CLICK TO SHOOT LASER"
+    set {action-bar-text::dave-9000::16} to "<##FFFF00>RIGHT CLICK TO SHOOT LASER"
+    set {action-bar-text::dave-9000::17} to "<##FFFF00>RIGHT CLICK TO SHOOT LASER"
+    set {action-bar-text::dave-9000::18} to "<##FFFF00>RIGHT CLICK TO SHOOT LASER"
+    set {action-bar-text::dave-9000::19} to "<##FFF800>RIGHT CLICK TO SHOOT LASER"
+    set {action-bar-text::dave-9000::20} to "<##FFE300>RIGHT CLICK TO SHOOT LASER"
+    set {action-bar-text::dave-9000::21} to "<##FFC400>RIGHT CLICK TO SHOOT LASER"
+    set {action-bar-text::dave-9000::22} to "<##FFB000>RIGHT CLICK TO SHOOT LASER"
+    set {action-bar-text::dave-9000::23} to "<##FF9B00>RIGHT CLICK TO SHOOT LASER"
+    set {action-bar-text::dave-9000::24} to "<##FF8600>RIGHT CLICK TO SHOOT LASER"
+    set {action-bar-text::dave-9000::25} to "<##FF7200>RIGHT CLICK TO SHOOT LASER"
+    set {action-bar-text::dave-9000::26} to "<##FF5D00>RIGHT CLICK TO SHOOT LASER"
+    set {action-bar-text::dave-9000::27} to "<##FF3E00>RIGHT CLICK TO SHOOT LASER"
+    set {action-bar-text::dave-9000::28} to "<##FF1500>RIGHT CLICK TO SHOOT LASER"
+    set {action-bar-text::dave-9000::29} to "<##FF2900>RIGHT CLICK TO SHOOT LASER"
+    set {action-bar-text::dave-9000::30} to "<##FF0000>RIGHT CLICK TO SHOOT LASER"
+
+function dave9000(p: player):
+
+    set {-power-active::%{_p}%::dave-9000} to true
+    set {-powers-locked::%{_p}%} to true
+
+    set {_l} to {_p}'s location
+    set pitch of {_l} to 0
+
+    set {_vertOffset} to 2.5
+    set {_horiOffset} to 0
+
+    set {_torsoDisplays::*} to buildingToDisplay({structure::dave-9000-torso::1}, {structure::dave-9000-torso::2}, {structure::dave-9000-torso::centre}, 1, location {_vertOffset} above {_l})
+    set {_leftLegDisplays::*} to buildingToDisplay({structure::dave-9000-left-leg::1}, {structure::dave-9000-left-leg::2}, {structure::dave-9000-left-leg::centre}, 1, location {_vertOffset}  above {_l})
+    set {_rightLegDisplays::*} to buildingToDisplay({structure::dave-9000-right-leg::1}, {structure::dave-9000-right-leg::2}, {structure::dave-9000-right-leg::centre}, 1, location {_vertOffset} above {_l})
+
+    set view range of {_torsoDisplays::*} to 0
+    set view range of {_leftLegDisplays::*} to 0
+    set view range of {_rightLegDisplays::*} to 0
+
+    set {_torsoRoot} to {_torsoDisplays::1}
+    set {_leftLegRoot} to {_leftLegDisplays::1}
+    set {_rightLegRoot} to {_rightLegDisplays::1}
+
+    set {-winding-up::%{_p}%::dave-9000} to true
+    set {-damage-reduction::%{_p}%} to 0.7
+
+    dave9000SpawnFrame({_p}, {_l})
+
+    spawn interaction at {_l}:
+        set {_hitbox} to event-entity
+        set interaction width of {_hitbox} to 8
+        set interaction height of {_hitbox} to 8
+        set {-is-dave-9000-interaction::%{_hitbox}%} to true
+        set {-dave-9000-interaction-player::%{_hitbox}%} to {_p}
+        set teleport duration of {_hitbox} to 1 tick
+        set interpolation duration of {_hitbox} to 1 tick
+        set shadow radius of {_hitbox} to 6
+        set shadow strength of {_hitbox} to 1.5
+
+    spawn armor stand at {_l}:
+        set {_stand} to event-entity
+        add nbt compound of "{Invisible:1b,Invulnerable:1b}" to nbt compound of {_stand}
+        set generic scale attribute of {_stand} to 3.5
+        set {-is-dave-9000-stand::%{_stand}%} to true
+
+    make {_p} ride {_stand}
+    send action bar "" to {_p}
+
+    playAllVillagerAnims({_p}, {_l}, 80)
+
+    # epic bass drop
+    play sound "block.conduit.deactivate" at volume 3 at pitch 0.5 at {_l}
+
+    applyInvis({_p})
+
+    loop {_leftLegDisplays::*}, {_rightLegDisplays::*} and {_torsoDisplays::*}:
+
+        if hasDied({_p}) = true:
+            exit loop
+
+        if {_p} is offline:
+            exit loop
+
+        set {_l} to location {_horiOffset} behind {_stand}
+        teleport {_torsoRoot} to location {_vertOffset} above {_l}
+        teleport {_leftLegRoot} to location {_vertOffset} above {_l}
+        teleport {_rightLegRoot} to location {_vertOffset} above {_l}
+
+        rotate({_torsoRoot}, {_p}'s yaw, 0, false)
+        rotate({_leftLegRoot}, {_p}'s yaw, 0, false)
+        rotate({_rightLegRoot}, {_p}'s yaw, 0, false)
+
+        set view range of loop-value to 128
+        #applyBrightnessGradient(loop-value)
+
+        wait 1 tick
+
+    loop 20 times:
+
+        if hasDied({_p}) = true:
+            exit loop
+
+        if {_p} is offline:
+            exit loop
+
+        set velocity of {_p} to vector(0, 0, 0)
+        push {_p} up at speed 0.005
+
+        set {_l} to location {_horiOffset} behind {_stand}
+        teleport {_torsoRoot} to location {_vertOffset} above {_l}
+        teleport {_leftLegRoot} to location {_vertOffset} above {_l}
+        teleport {_rightLegRoot} to location {_vertOffset} above {_l}
+
+        rotate({_torsoRoot}, {_p}'s yaw, 0, false)
+        rotate({_leftLegRoot}, {_p}'s yaw, 0, false)
+        rotate({_rightLegRoot}, {_p}'s yaw, 0, false)
+
+        wait 1 tick
+
+    strike lightning effect at {_p}
+    play sound "block.end_portal.spawn" at volume 3 at pitch 1.2 at {_p}
+
+    spawn item display at location 0.75 above and 0.5 horizontally behind {_p}:
+        set {_headDisplay} to event-entity
+        set item of {_headDisplay} to {heads::dave-9000}
+        set display scale of {_headDisplay} to vector(4.3, 4.3, 4.3)
+        set display translation of {_headDisplay} to vector(0, 1.625, 0)
+        set teleport duration of {_headDisplay} to 1 tick
+
+    make {_headDisplay} disappear for {_p}
+
+    delete {-winding-up::%{_p}%::dave-9000}
+
+    set {-moving::%{_p}%::dave-9000} to true
+
+    set {_maxWalkAngle} to 30
+
+    play sound "entity.ravager.celebrate" at volume 3 at pitch 1.2 at {_l}
+
+    set yaw of {_l} to yaw of {_p}
+    teleport {_stand} to location {_horiOffset} infront of {_l}
+    rotate({_stand}, {_p}'s yaw, 0, false)
+    teleport {_p} to location 5 above {_stand}
+
+    make {_p} ride {_stand}
+
+    set {-action-bar::%{_p}%::dave-9000} to true
+    powerActionBar({_p}, "dave-9000")
+    startDuration({_p}, "dave-9000", 200 ticks)
+
+    loop 200 times:
+
+        if hasDied({_p}) = true:
+            exit loop
+
+        if {_p} is offline:
+            exit loop
+
+        set {_l} to location {_horiOffset} behind {_stand}
+        add nbt compound of "{Rotation:[%yaw of {_p}%F,0F]}" to nbt compound of {_stand}
+        set pitch of {_l} to 0
+
+        loop getLivingEntities({_p}, {_l}, 2.5) where [input != {_p}]:
+
+            set {_ent} to loop-value-2
+            time since {-hit::%{_p}%::%{_ent}%::dave-9000} is set:
+                time since {-hit::%{_p}%::%{_ent}%::dave-9000} < 1 seconds:
+                    continue
+    
+            set {-hit::%{_p}%::%{_ent}%::dave-9000} to now
+            makeDamage({_p}, {_ent}, {powerAttributes::dave-9000::trample-damage}, "dave-9000;trample")
+
+            push {_ent} (vector from {_l} to {_ent}) at speed 2
+            push {_ent} up at speed 1
+
+            draw 10 crit particle with offset vector(1, 1, 1) with particle speed 0.25 at {_ent}
+
+            play sound "entity.player.attack.knockback" at volume 3 at pitch 1.2 at {_ent}
+            play sound "enchant.thorns.hit" at volume 3 at pitch 0.8 at {_ent}
+            play sound "entity.ravager.celebrate" at volume 2 at pitch 1.2 at {_p}
+
+        play sound "entity.iron_golem.step" at volume 1.5 at pitch 0.8 at {_l}
+
+        set {_v} to getWASD({_p})
+
+        if {_v} != vector(0, 0, 0):
+
+            set vector length of {_v} to 0.25
+
+            set x component of velocity of {_stand} to x component of {_v}
+            set z component of velocity of {_stand} to z component of {_v}
+
+        if current input keys of {_p} contains jump key:
+            {_stand} is on ground
+            push {_stand} up at speed 0.75
+
+        #if {except::*} does not contain block 1 infront of {_stand}:
+        #    set y component of velocity of {_stand} to 0.25
+
+        set interpolation delay of {_hitbox} to 0 ticks
+        teleport {_hitbox} to {_l}
+
+        teleport {_torsoRoot} to location {_vertOffset} above {_l}
+        teleport {_leftLegRoot} to location {_vertOffset} above {_l}
+        teleport {_rightLegRoot} to location {_vertOffset} above {_l}
+
+        set {_headLoc} to location 3.5 above location 0.75 infront {_torsoRoot}
+        add 180 to yaw of {_headLoc}
+        set pitch of {_headLoc} to (pitch of {_p}) * -1
+        teleport {_headDisplay} to {_headLoc}
+
+        if {_v} = vector(0, 0, 0):
+            set {_angle} to 0
+        else:
+            set {_angle} to {_maxWalkAngle} * sin(loop-value * 9)
+
+        rotate({_torsoRoot}, {_p}'s yaw, 0, false)
+        rotate({_leftLegRoot}, {_p}'s yaw, 0, false)
+        rotate({_rightLegRoot}, {_p}'s yaw, 0, false)
+
+        if {_angle} != {_prev-angle}:
+            rotateOnRollAxis({_leftLegDisplays::*}, {_angle} - {_prev-angle}, vector(1, 0, 0))
+            rotateOnRollAxis({_rightLegDisplays::*}, {_prev-angle} - {_angle}, vector(1, 0, 0))
+        #set right transformation rotation of {_leftLegRoot} to axisAngle({_angle})
+        #set right transformation rotation of {_rightLegRoot} to axisAngle({_angle})
+
+        wait 1 tick
+
+
+        set {_prev-angle} to {_angle}
+
+    set {_l} to location {_horiOffset} behind {_stand}
+
+    delete {-moving::%{_p}%::dave-9000}
+    delete {-power-active::%{_p}%::dave-9000}
+    delete {-action-bar::%{_p}%::dave-9000}
+
+    set {-damage-reduction::%{_p}%} to 0
+    delete {-powers-locked::%{_p}%}
+
+    #set {_p}'s movement speed attribute to {_origWalkspeed}
+    #set {_p}'s jump strength attribute to {_origJumpStrength}
+    kill {_torsoRoot}
+    kill {_leftLegRoot}
+    kill {_rightLegRoot}
+    kill {_headDisplay}
+    kill {_hitbox}
+    kill {_stand}
+
+    removeInvis({_p})
+
+    create explosion of force 2 at {_headDisplay}
+    play sound "entity.iron_golem.death" at volume 3 at pitch 0.8 at {_l}
+    play sound "entity.ravager.death" at volume 3 at pitch 1.2 at {_l}
+    #play sound "block.respawn_anchor.deplete" at volume 3 at pitch 0.5 at {_l}
+
+    dave9000DeathAnimation({_l})
+
+
+function dave9000DeathAnimation(l: location):
+    #spawn item display at {_l}:
+    #    set {_headDisplay} to event-entity
+    #    set item of {_headDisplay} to {heads::dave-9000}
+    #    set display scale of {_headDisplay} to vector(4.3, 4.3, 4.3)
+    #    set display translation of {_headDisplay} to vector(0, 1.625, 0)
+    #    set teleport duration of {_headDisplay} to 1 tick
+
+    set {_l}'s pitch to 0
+
+    set {_displays::*} to buildingToDisplay({structure::dave-9000::1}, {structure::dave-9000::2}, {structure::dave-9000::centre}, 1, {_l})
+    set {_root} to {_displays::1}
+
+    rotate({_root}, {_l}'s yaw, 0)
+
+    loop 60 times:
+
+        loop-counter = 22:
+
+            loop 180 times:
+                set {_v} to spherical vector radius 2, yaw (loop-value-2) * 2, pitch 0
+                draw 0 smoke particle with offset {_v} with particle speed 0.25 at location 0.5 above location 4 behind {_l} ~ {_v}
+                #draw 0 item using anvil at {_impactLoc} ~ {_v} with offset {_v} with particle speed 0.5
+
+            play sound "entity.iron_golem.repair" at volume 2 at pitch 0.5 at {_l}
+            play sound "entity.zombie.attack_wooden_door" at volume 2 at pitch 0.5 at {_l}
+            play sound "block.fire.extinguish" at volume 2 at pitch 0.8 at {_l}
+
+        if loop-counter > 20:
+            chance of 25%:
+                draw 1 smoke particle with offset vector(2, 2, 2) with particle speed 0.2 at location 4 behind {_l}
+            chance of 25%:
+                draw 1 campfire cosy smoke particle with offset vector(2, 2, 2) with particle speed 0.2 at location 4 behind {_l}
+
+        set {_angle} to -80 * easeOutBounce(loop-value / 60)
+
+        rotateOnRollAxis({_displays::*}, {_angle} - {_prev-angle}, vector(1, 0, 0))
+
+        wait 1 tick
+        set {_prev-angle} to {_angle}
+
+    loop shuffled {_displays::*}:
+
+        set view range of loop-value to 0
+        set {_v} to display translation of loop-value
+        rotate {_v} around y-axis by ({_l}'s yaw) * -1 degrees
+        set {_drawLoc} to location of {_root} ~ {_v}
+        draw 2 (block data of loop-value) block particle with offset vector(0.5, 0.5, 0.5) at {_drawLoc}
+        play sound "block.stone.break" at volume 0.75 at pitch 1 at loop-value
+
+        chance of 25%:
+            draw 1 smoke particle with offset vector(2, 2, 2) with particle speed 0.2 at location 4 behind {_l}
+        chance of 25%:
+            draw 1 campfire cosy smoke particle with offset vector(2, 2, 2) with particle speed 0.2 at location 4 behind {_l}
+
+        wait 1 tick
+
+
+    kill {_displays::*}
+    #kill {_headDisplay}
+
+on right click:
+    if {-moving::%player%::dave-9000} = true:
+        {-laser-used::%player%::dave-9000} is set:
+            time since {-laser-used::%player%::dave-9000} < 2 ticks:
+                stop
+        set {-laser-used::%player%::dave-9000} to now
+        dave9000Laser(player)
+
+on dismount:
+    if {-is-dave-9000-stand::%vehicle of event-entity%} = true:
+        cancel event

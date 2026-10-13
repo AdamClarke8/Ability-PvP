@@ -1,0 +1,106 @@
+options:
+    invalidDamageCauses: "burning and campfire and entity explosion and suffocation and contact and fall"
+    maxRegenTicks: 130
+    regenTier: 3
+
+on damage:
+
+    if {@invalidDamageCauses} contains "%damage cause%":
+        cancel event
+        stop
+
+    if victim is a mooshroom:
+        set {_owner} to {-owner::%victim%}
+        {_owner} is set
+        cancel event
+        if attacker is set:
+            make attacker damage {_owner} by damage
+        else:
+            damage {_owner} by damage
+        stop
+
+    if {-damage-reduction::%victim%} is set:
+        set damage to damage * (1 - {-damage-reduction::%victim%})
+
+    if {-power-active::%victim%::petrify} = true:
+        set damage to 0
+        delete {-power-active::%victim%::petrify}
+
+    if attacker is a player:
+
+        if victim is a player:
+            add damage to {-total-damage-dealt::%victim%::%attacker%}
+
+        if {king-of-the-hill} = true:
+            add damage to {-damage-dealt-koth::%attacker%}
+
+        else if {ffa} = true:
+            add damage to {-damage-dealt-ffa::%attacker%}
+
+    if victim is a player:
+        {-fell-into-void::%victim%} != true
+
+        if {king-of-the-hill} = true:
+            add damage to {-damage-taken-koth::%victim%}
+
+        else if {ffa} = true:
+            add damage to {-damage-taken-ffa::%victim%}
+
+    victim is a living entity
+
+    {-mannequin-owner::%victim%} is not set:
+        damageBossbar(victim, attacker, damage)
+
+    if damage >= 1:
+        play sound "entity.arrow.hit_player" at volume 10 at pitch 1 to attacker
+
+    set {-last-damaged::%victim%::%attacker%} to now
+
+function makeDamage(attacker: entity, victim: entity, damage: number, damage-cause: text):
+    #if {_victim} is a mannequin:
+    #    set {_owner} to {-mannequin-owner::%{_victim}%}
+    #    {_owner} is set
+    #    make {_attacker} damage {_victim} by {_damage}
+    #    set {_victim} to {_owner}
+    if {_victim} is a mannequin:
+        make {_attacker} damage {_victim} by {_damage}
+        makeDamage({_attacker}, {-mannequin-owner::%{_victim}%}, {_damage}, {_damage-cause})
+    else:
+        set {-damage-cause::%{_victim}%::%{_attacker}%} to {_damage-cause} 
+        make {_attacker} damage {_victim} by {_damage}
+
+function getMostRecentAttacker(victim: player) :: player:
+    loop all players:
+        if {-last-damaged::%{_victim}%::%loop-player%} is set:
+            add loop-player to {_attackers::*}
+            set {_time} to time since {-last-damaged::%{_victim}%::%loop-player%}
+            add {_time} to {_times::*}
+    set {_attackers-sorted::*} to sortArrayCompareAscending({_attackers::*}, {_times::*})
+    return {_attackers-sorted::1}
+
+function getAllAttackers(victim: player) :: players:
+    loop indices of {-last-damaged::%{_victim}%::*}:
+        set {_player} to loop-value parsed as player
+        {_player} is set
+        set {_attackers::%loop-counter%} to {_player}
+    return {_attackers::*}
+
+function getTotalDamageTaken(victim: player) :: number:
+    return sum({-total-damage-dealt::%{_victim}%::*})
+
+function getDamageTaken(victim: player, attacker: player) :: number:
+    return {-total-damage-dealt::%{_victim}%::%{_attacker}%}
+
+function calcFracDamageDealt(victim: player, attacker: player) :: number:
+    return getDamageTaken({_victim}, {_attacker}) / getTotalDamageTaken({_victim})
+
+#function calcKillRegenTicks(victim: player, attacker: player) :: number:
+#    set {_ratio} to getDamageTaken({_victim}, {_attacker}) / getTotalDamageTaken({_victim})
+#    return {_ratio} * {@maxRegenTicks}
+
+function applyKillRegenToAttackers(victim: player):
+    loop getAllAttackers({_victim}):
+        set {_ticks} to {@maxRegenTicks} * calcFracDamageDealt({_victim}, loop-value)
+        apply regeneration {@regenTier} to loop-value for "%{_ticks}% ticks" parsed as timespan:
+            hide particles
+			#hide icont

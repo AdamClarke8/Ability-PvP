@@ -1,0 +1,294 @@
+options:
+    section-size: 5.5
+    speed: 2.5
+    material: oak planks
+
+function spawnHookBody(l: location, pitch: number = 0) :: entity:
+    set {_orig-scale} to vector(0.2, 5, 0.2)
+    set {_orig-translation} to vector(-0.15, -5, -0.15)
+
+    spawn block display at {_l}:
+        set {_body} to event-entity
+        set block data of {_body} to {@material}
+        set display scale of {_body} to {_orig-scale}
+        set display translation of {_body} to {_orig-translation}
+        set teleport duration of {_body} to 1 tick
+        set interpolation duration of {_body} to 1 tick
+        set sky light override of {_body} to 15
+        set yaw of {_body} to 0
+        set pitch of {_body} to 0
+        rotateOnRollAxis({_body}, {_pitch} -90, vector(1, 0, 0))
+    return {_body}
+
+function hook(p: player):
+
+    set {-power-active::%{_p}%::hook} to true
+
+    set {_orig-l} to location 1 infront location 1.3 above {_p}
+    set {_l} to {_orig-l}
+    set {_temp-l} to {_l}
+
+    set {_player-v} to vector from yaw (yaw of {_p}) and pitch (pitch of {_p})
+    set vector length of {_player-v} to {@speed}
+
+    #set vector length of {_v} to {@speed}
+    #set {_vel-hori} to sqrt((x component of {_v}) ^ 2 + (z component of {_v}) ^ 2)
+    #set {_vel-vert} to y component of {_v}
+
+    set {_acceleration} to 0.05
+
+    set {_hook-displays::*} to buildingToDisplay({structure::hook::1}, {structure::hook::2}, {structure::hook::centre}, 0.3, {_l})
+    set {_hook-root} to {_hook-displays::1}
+
+    set {_prev-pitch} to 0
+
+    loop {_hook-displays::*}:
+        set {_orig-translation::%loop-counter%} to display translation of loop-value
+        set sky light override of loop-value to 15
+
+    rotateOnRollAxis({_hook-displays::*}, -90, vector(1, 0, 0))
+
+    set {_body::1} to spawnHookBody(location 100 below {_l})
+    set {_num-bodies} to 1
+
+    play sound "entity.horse.armor" at volume 3 at pitch 1.5 at {_l}
+    play sound "entity.fishing_bobber.throw" at volume 3 at pitch 1 at {_l}
+
+    while {except::*} contains block at {_temp-l}:
+
+        play sound "entity.phantom.flap" at volume 2.5 at pitch 2 - (distance between {_l} and {_temp-l}) / ({@speed} * 32) at {_l}
+        play sound "entity.iron_golem.attack" at volume 2.5 at pitch 1.5 - (distance between {_l} and {_temp-l}) / ({@speed} * 32) at {_l}
+
+        if loop-counter > 30:
+            exit loop
+
+        set {_targets::*} to getLivingEntities({_p}, {_temp-l}, 2.75) where [input != {_p}]
+
+        if {_targets::*} is set:
+            exit loop
+
+        if hasDied({_p}) = true:
+            exit loop
+
+        loop 10 times: #n/2 (2a + (n-1)d)
+            set {_n} to ((loop-counter-1) * 10 + loop-counter-2) / 10 - 1
+            set {_v2} to {_player-v} / 10
+            set y component of {_v2} to (y component of {_v2}) - ({_acceleration} * {_n} / 10)
+            #set {_vert-offset} to {_n} * (2 * {_vel-vert} - ({_n} - 1) * {_acceleration})
+            set {_prev-l} to {_l}
+            set {_l} to {_orig-l} ~ vector from location 1 behind {_orig-l} to location 1.3 above {_p}
+            set yaw of {_l} to yaw of {_orig-l}
+            set {_temp-l} to {_temp-l} ~ {_v2} ~ (vector from {_prev-l} to {_l})
+            #set {_temp-l} to location {_vert-offset} above location {_vel-hori} * {_n} horizontally infront of {_l}
+
+            if {except::*} does not contain block at {_temp-l}:
+                exit loop
+
+            #draw 1 smoke at {_temp-l} with extra 0
+            set {_pitch} to pitch of vector from {_l} to {_temp-l}
+
+            teleport {_hook-root} to {_temp-l}
+            rotate({_hook-root}, (yaw of {_l}), 0, false)
+            rotateOnRollAxis({_hook-displays::*}, ({_pitch} - {_prev-pitch}), vector(1, 0, 0))
+
+            set {_v} to (vector from {_l} to {_temp-l})
+            set {_length} to vector length of {_v}
+
+            if ceil({_length} / {@section-size}) > {_num-bodies}:
+                add 1 to {_num-bodies}
+                set {_body::%{_num-bodies}%} to spawnHookBody(location 100 below {_l}, {_pitch})
+                #set block data of {_body::%{_num-bodies}%} to redstone block
+
+            loop {_body::*}:
+                teleport loop-value-2 to {_l}
+                set {_new-length} to min({@section-size}, {_length} - (-1 + loop-counter-3) * {@section-size})
+
+                if {_new-length} <= -1:
+                    clear {_body::%loop-counter-3%}
+                    kill loop-value-2
+                    subtract 1 from {_num-bodies}
+                    continue
+
+                rotateOnRollAxis(loop-value-2, {_prev-pitch} * -1 + 90, vector(1, 0, 0))
+                set y component of display scale of loop-value-2 to {_new-length}
+                set y component of display translation of loop-value-2 to (1 - loop-counter-3) * {@section-size} + {_new-length} * -1
+                rotateOnRollAxis(loop-value-2, {_prev-pitch} - 90, vector(1, 0, 0))
+
+                rotateOnRollAxis(loop-value-2, ({_pitch} - {_prev-pitch}), vector(1, 0, 0))
+                rotate(loop-value-2, (yaw of {_l}), 0, false)
+
+            if loop-value = 10:
+                wait 1 tick
+
+            set {_prev-pitch} to {_pitch}
+
+    if {_targets::*} is set:
+        set {_target} to getNearest({_temp-l}, {_targets::*})
+        makeDamage({_p}, {_target}, {powerAttributes::hook::damage}, "hook")
+        play sound "item.trident.hit" at volume 3 at pitch 1 at {_target}
+        play sound "block.anvil.place" at volume 2 at pitch 1.5 at {_target}
+        draw 10 crit particle with offset vector(1, 1, 1) with particle speed 0.25 at {_target}
+
+    else if {except::*} does not contain block at {_temp-l}:
+        set {_hit-block} to true
+
+    set {_final-v} to vector from {_l} to {_temp-l}
+    set {_final-length} to vector length of {_final-v}
+    play sound "item.trident.hit_ground" at volume 3 at pitch 0.8 at {_temp-l}
+
+    #if all:
+    #    {_target} is not set
+    #    {except::*} does not contain block at {_temp-l}
+    #then:
+        #set {_pull-to-target} to true
+    #    play sound "entity.breeze.idle_air" at volume 3 at pitch 1.5 at {_l}
+
+    set {-hook-retracting::%{_p}%} to true
+
+    if {_hit-block} = true:
+        set {_dist} to getHorizontalDistance({_l}, {_temp-l})
+    else:
+        set {_dist} to distance between {_l} and {_temp-l}
+
+    while {_dist} > 2:
+
+        if {-cancel-hook-retraction::%{_p}%} = true:
+            exit loop
+
+        if all:
+            {_pull-to-target} != true
+            {_targets::*} is not set
+        then:
+            set {_targets::*} to getLivingEntities({_p}, {_temp-l}, 2.75) where [input != {_p}]
+            if {_targets::*} is set:
+                set {_target} to getNearest({_temp-l}, {_targets::*})
+                makeDamage({_p}, {_target}, {powerAttributes::hook::damage}, "hook")
+                play sound "item.trident.hit" at volume 3 at pitch 1 at {_target}
+                play sound "block.anvil.place" at volume 2 at pitch 1.5 at {_target}
+                draw 10 crit particle with offset vector(1, 1, 1) with particle speed 0.25 at {_target}
+
+        if loop-counter > 100:
+            exit loop
+
+        if hasDied({_p}) = true:
+            exit loop
+
+        play sound "entity.breeze.land" at volume 2 at pitch 2 - {_dist} / {_final-length} at {_l}
+        play sound "entity.iron_golem.attack" at volume 2.5 at pitch 2 - {_dist} / {_final-length} at {_l}
+
+        loop 10 times:
+
+            if {_hit-block} = true:
+                set {_dist} to getHorizontalDistance({_l}, {_temp-l})
+            else:
+                set {_dist} to distance between {_l} and {_temp-l}
+
+            if {_dist} < 1:
+                exit loop
+    
+            set {_n} to ((loop-counter-1) * 10 + loop-counter-2) / 10
+
+            set {_l} to {_orig-l} ~ vector from location 1 behind {_orig-l} to location 1.3 above {_p}
+            set yaw of {_l} to yaw of {_orig-l}
+
+            if {_pull-to-target} != true:
+                set {_pull-v} to (normalized vector from {_temp-l} to {_l}) * {_final-length} / 100
+                if {_hit-block} = true:
+                    set y component of {_pull-v} to 0
+                set {_temp-l} to {_temp-l} ~ {_pull-v}
+                if {_hit-block} = true:
+                    if {except::*} does not contain block at {_temp-l}:
+                        while {except::*} does not contain block at {_temp-l}:
+                            if loop-counter-3 > 50:
+                                exit loop
+                            set {_temp-l} to location 0.1 above {_temp-l}
+                    #else if {except::*} contains block 0.5 below {_temp-l}:
+                    #    while {except::*} contains block 0.5 below {_temp-l}:
+                    #        if loop-counter-3 > 50:
+                    #            exit loop
+                     #       set {_temp-l} to location 0.1 below {_temp-l}
+            set {_v} to vector from {_temp-l} to {_l}
+
+            if {_pull-to-target} != true:
+                if yaw of {_v} != yaw of {_orig-l}:
+                    set yaw of {_v} to yaw of {_orig-l}
+                    set {_temp-l} to {_l} ~ {_v}
+                teleport {_hook-root} to {_temp-l}
+                rotate({_hook-root}, (yaw of {_final-v}), 0, false)
+                set {_pitch} to pitch of {_v}
+
+            else:
+                if {_target} is set:
+                    set {_temp-l} to location of {_target}
+
+                teleport {_hook-root} to {_temp-l}
+                rotate({_hook-root}, (yaw of {_final-v}), 0, false)
+                set {_pitch} to pitch of {_v} * -1
+
+
+            #draw 1 smoke at {_temp-l} with extra 0
+
+            
+            rotateOnRollAxis({_hook-displays::*}, ({_pitch} - {_prev-pitch}), vector(1, 0, 0))
+
+            set {_v} to (vector from {_l} to {_temp-l})
+            set {_length} to vector length of {_v}
+
+            if ceil({_length} / {@section-size}) > {_num-bodies}:
+                add 1 to {_num-bodies}
+                set {_body::%{_num-bodies}%} to spawnHookBody(location 100 below {_l}, {_pitch})
+                #set block data of {_body::%{_num-bodies}%} to redstone block
+
+            loop {_body::*}:
+                teleport loop-value-2 to {_l}
+                set {_new-length} to min({@section-size}, {_length} - (-1 + loop-counter-3) * {@section-size})
+
+                if {_new-length} <= -1:
+                    clear {_body::%loop-counter-3%}
+                    kill loop-value-2
+                    subtract 1 from {_num-bodies}
+                    continue
+
+                rotateOnRollAxis(loop-value-2, {_prev-pitch} * -1 + 90, vector(1, 0, 0))
+                set y component of display scale of loop-value-2 to {_new-length}
+                set y component of display translation of loop-value-2 to (1 - loop-counter-3) * {@section-size} + {_new-length} * -1
+                rotateOnRollAxis(loop-value-2, {_prev-pitch} - 90, vector(1, 0, 0))
+
+                rotateOnRollAxis(loop-value-2, ({_pitch} - {_prev-pitch}), vector(1, 0, 0))
+                rotate(loop-value-2, (yaw of {_v}), 0, false)
+
+            if loop-value = 10:
+
+                if {_pull-to-target} = true:
+                    set velocity of {_p} to (normalized {_v}) * {@speed} * (1.01 ^ (loop-counter-1)) / 1.5
+                    set {_v2} to {_v}
+                    set y component of {_v2} to 0
+                    set {_v2} to (normalized {_v2}) * 0.5
+                    if {except::*} does not contain block at {_p}'s location ~ {_v2}:
+                        set y component of velocity of {_p} to (y component of velocity of {_p}) + 1
+
+                while vehicle of {_target} is set:
+                    set {_target} to vehicle of {_target}
+
+                set {_target-v} to vector from {_target} to {_temp-l}
+                if (vector length of {_target-v}) > (vector length of {_v}):
+                    set velocity of {_target} to (normalized {_target-v}) * {@speed} / 1.25
+                draw 1 smoke particle with offset vector(1, 1, 1) with particle speed 0.25 at {_target} 
+                play sound "entity.player.attack.weak" at volume 2 at pitch 0.8 at {_target}
+                wait 1 tick
+
+            set {_prev-pitch} to {_pitch}
+
+    play sound "entity.horse.armor" at volume 2 at pitch 1.2 at {_l}
+    if {_pull-to-target} = true:
+        applyPush({_p}, vector(0, 0.5, 0), {_p}, "hook")
+    kill {_hook-root}
+    kill {_body::*}
+
+    delete {-hook-retracting::%{_p}%}
+    delete {-cancel-hook-retraction::%{_p}%}
+    delete {-power-active::%{_p}%::hook}
+
+on sneak toggle:
+    if {-hook-retracting::%player%} = true:
+        set {-cancel-hook-retraction::%player%} to true

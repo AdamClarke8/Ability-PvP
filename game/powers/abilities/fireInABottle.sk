@@ -1,0 +1,87 @@
+options:
+    speed: 1.25
+    bloom: 0.5
+
+on script load:
+    wait 40 ticks
+    set {fireInABottle-items::*} to {heads::fireball}, {heads::gray-orb}, {heads::light-gray-orb} and orange stained glass
+
+function fireInABottleParticle(p: player, l: location, v: vector, i: item type, scale: number):
+
+    #set {_l} to {_l}
+    set yaw of {_l} to (yaw of {_l}) + (random integer between 1 and 360)
+    set pitch of {_l} to 0
+
+    set yaw of {_v} to yaw of {_v} + (random integer between -900 and 900) * {@bloom} / 100
+    set pitch of {_v} to pitch of {_v} + (random integer between -900 and 900) * {@bloom} / 100
+
+    spawn item display at {_l}:
+        set {_display} to event-entity
+        set item of {_display} to {_i}
+        set display scale of {_display} to vector({_scale}, {_scale}, {_scale}) * (random integer between 750 and 1250) / 1000
+        set display translation of {_display} to vector(0, 0, 0)
+        set interpolation duration of {_display} to 1 tick
+        set teleport duration of {_display} to 1 tick
+        set sky light override of {_display} to 15
+        rotate {_display} around x-axis by (random integer between 1 and 360) degrees
+        rotate {_display} around y-axis by (random integer between -90 and 90) degrees
+
+    set {_temp-l} to {_l}
+
+    loop 20 times:
+
+        set {_draw-l} to {_temp-l}
+        if {except::*} does not contain block at {_draw-l}:
+            exit loop
+
+        loop getLivingEntities({_p}, {_draw-l}, 1.5) where [input != {_p}]:
+            set {_ent} to loop-value-2
+
+            if time since {-hit::%{_p}%::%{_ent}%::fire-in-a-bottle} is set:
+                if time since {-hit::%{_p}%::%{_ent}%::fire-in-a-bottle} < 0.5 seconds:
+                    continue
+
+            set {-hit::%{_p}%::%{_ent}%::fire-in-a-bottle} to now
+
+            draw 1 gust particle with offset vector(1, 1, 1) with particle speed 0 at {_ent}
+            makeDamage({_p}, {_ent}, {powerAttributes::fire-in-a-bottle::damage}, "fire-in-a-bottle")
+
+        set {_v} to {_v} * 0.95
+        set {_temp-l} to {_temp-l} ~ {_v}
+        teleport {_display} to {_temp-l}
+
+        set display scale of {_display} to (display scale of {_display}) * 0.9
+        rotate {_display} around y-axis by 6 degrees
+        rotate {_display} around x-axis by 3 degrees
+
+        chance of 5%:
+            draw 1 smoke particle with offset vector(0.125, 0.125, 0.125) with particle speed 0.05 at {_draw-l}
+            
+        chance of 2%:
+            draw 1 flame particle with offset vector(0.125, 0.125, 0.125) with particle speed 0.05 at {_draw-l}
+
+        chance of 0.5%:
+            draw 1 campfire cosy smoke particle with offset vector(0, 0, 0) with particle speed 0 at {_draw-l}
+
+        wait 1 tick
+
+    kill {_display}
+
+function fireInABottle(p: player):
+    set {_l} to location 1.3 above location 1 infront of {_p}
+
+    play sound "entity.player.burp" at volume 2 at pitch 0.8 at {_l}
+    play sound "entity.breeze.inhale" at volume 3 at pitch 0.8 at {_l}
+    play sound "entity.blaze.shoot" at volume 3 at pitch 1 at {_l}
+
+    draw 1 explosion particle at {_l}
+
+    loop 20 times:
+        set {_v} to vector from yaw (yaw of {_p}) and pitch (pitch of {_p})
+        set vector length of {_v} to {@speed}
+        set {_temp-l} to location 1.3 above location 1 infront of {_p}
+        set {_i} to random element of {fireInABottle-items::*}
+        fireInABottleParticle({_p}, {_temp-l}, {_v}, {_i}, 1.75 - loop-value / 40)
+        play sound "entity.breeze.land" at volume 2.5 at pitch 2 - 0.75 * sin(loop-value * 180 / 20) ^ 0.5 at {_l}
+        wait 1 tick
+    play sound "block.fire.extinguish" at volume 2 at pitch 2 at {_temp-l}

@@ -1,0 +1,80 @@
+options:
+    uncommon: &a&lUNCOMMON
+    rare: &9&lRARE
+    epic: &5&lEPIC
+    legendary: &6&lLEGENDARY
+
+on script load:
+    delete {heads::*}
+    wait 1 second
+    set {head-chest::*} to block at location(24.5, 65.5, -3.5, "game") and block at location(24.5, 65.5, -2.5, "game")
+    loop inventories of {head-chest::*}:
+        set {heads::%unformat(loop-value's name)%} to 1 of loop-value
+
+command /give-power <text> <number = 1>:
+    permission: give-power
+    aliases: power
+    trigger:
+        indices of {powers::*} does not contain arg-1:
+            error(player, "&cInvalid power name! Must be in format: power-name")
+            stop
+        give player arg-2 of getPower(arg-1)
+
+command /give-all-powers <number = 64>:
+    permission: give-power
+    aliases: all-powers
+    trigger:
+        loop indices of {powers::*}:
+            give player arg of getPower(loop-value)
+
+using equippable components
+
+function getPower(name: text) :: item:
+    set {_i} to {powers::%{_name}%}
+    set {_cooldown} to {powerAttributes::%{_name}%::cooldown}
+    apply use cooldown component to {_i}:
+        seconds: 1 tick
+        group: "power:%{_name}%"
+    #if {_numUses} > 1:
+    #    set max durability of {_i} to {_numUses}
+    #    set max stack size of {_i} to 1
+    set max stack size of {_i} to 64
+    set equipment slot of {_i} to main hand slot
+    return {_i}
+
+tab complete of "/give-power" or "/power":
+	set tab completions for position 1 to (indices of {powers::*})
+
+#on inventory click:
+
+    # prevent shift clicking into helmet slot
+    #if all:
+    #    event-inventory = player's inventory
+        # helmet slot is empty?
+    #    slot 39 of event-inventory = air
+    #    click type = right mouse button with shift or left mouse button with shift
+    #    event-slot = a player head
+    #then:
+    #    cancel event
+        # clicked item is in hotbar?
+    #    if event-slot's index is between 0 and 8:
+    #        set {_slots::*} to integers between 9 and 35
+        # otherwise clicked item is in top inventory?
+    #    else if event-slot's index is between 9 and 35:
+    #        set {_slots::*} to integers between 0 and 8
+    
+    #    loop {_slots::*}:
+    #        slot loop-value of event-inventory = air
+            # swap the items
+    #        set slot loop-value of event-inventory to event-slot
+    #        set event-slot to air
+    #        exit loop
+
+    # prevent dragging into helmet slot
+    #else if all:
+    #    event-inventory = player's inventory
+        # helmet slot is empty?
+    #    event-slot's index = 39
+    #    player's cursor slot = a player head
+    #then:
+    #    cancel event

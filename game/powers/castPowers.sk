@@ -1,0 +1,675 @@
+options:
+    uncommon: &a&lUNCOMMON
+    rare: &9&lRARE
+    epic: &5&lEPIC
+    legendary: &6&lLEGENDARY
+
+#on rightclick:
+#    set {_ability} to ...
+#    execute function {-func::%{_ability}%} with player
+
+on script load:
+
+    delete {powers::*}
+    delete {power-names-by-rarity::*}
+    delete {powers-by-rarity::*}
+    delete {powerAttributes::*}
+
+    set {powers::missile} to tnt named "{@rare} &8| &cMissile"
+    set {powerAttributes::missile::cooldown} to 1 seconds
+    set {powerAttributes::missile::damage} to 4
+    set {powerAttributes::missile::stack-size} to 1
+    set lore of {powers::missile} to "&7▌ &fEnsure mutual destruction on your enemies."
+
+    set {powers::giant-snowball} to {heads::snowball} named "{@epic} &8| &fGiant Snowball"
+    set {powerAttributes::giant-snowball::cooldown} to 10 seconds
+    set {powerAttributes::giant-snowball::damage} to 2
+    set {powerAttributes::giant-snowball::stack-size} to 1
+    set lore of {powers::giant-snowball} to "&7▌ &fTumble rapidly towards your enemies."
+
+    set {powers::sledgehammer} to unbreakable netherite pickaxe named "{@epic} &8| &7Sledgehammer" with item flag hide attributes and hide unbreakable
+    set {powerAttributes::sledgehammer::cooldown} to 3 seconds
+    set {powerAttributes::sledgehammer::damage} to 3.5
+    set {powerAttributes::sledgehammer::stack-size} to 3
+    set lore of {powers::sledgehammer} to "&7▌ &fThrust into the air and", "&fslam onto your opponents."
+
+    set {powers::burger} to {heads::burger} named "{@rare} &8| &eBurger"
+    set {powerAttributes::burger::cooldown} to 0.5 seconds
+    set {powerAttributes::burger::damage} to 1.5
+    set {powerAttributes::burger::stack-size} to 8
+    set lore of {powers::burger} to "&7▌ &fUse the power of gourmet", "&fto sandwich your opponents."
+
+    set {powers::popcorn} to {heads::popcorn} named "{@uncommon} &8| &ePopcorn"
+    set {powerAttributes::popcorn::cooldown} to 0.25 seconds
+    set {powerAttributes::popcorn::damage} to 1
+    set {powerAttributes::popcorn::stack-size} to 8
+    set lore of {powers::popcorn} to "&7▌ &fInundate your opponents with", "&fthe butteriest food of them all."
+
+    set {powers::dave-9000} to {heads::dave-9000} named "{@legendary} &8| &aDAVE 9000"
+    set {powerAttributes::dave-9000::cooldown} to 15 seconds
+    set {powerAttributes::dave-9000::laser-damage} to 2
+    set {powerAttributes::dave-9000::trample-damage} to 2
+    set {powerAttributes::dave-9000::stack-size} to 1
+    set lore of {powers::dave-9000} to "&7▌ &fCAUTION: to be used to defend the village ONLY."
+
+    set {powers::flying-machine} to {heads::flying-machine} named "{@epic} &8| &aFlying Machine"
+    set {powerAttributes::flying-machine::cooldown} to 5 seconds
+    set {powerAttributes::flying-machine::tnt-damage} to 2.5
+    set {powerAttributes::flying-machine::trample-damage} to 1.25
+    set {powerAttributes::flying-machine::stack-size} to 1
+    set lore of {powers::flying-machine} to "&7▌ &fSoar into the skies and", "&fexplode your enemies from above."
+
+    set {powers::minecart} to minecart named "{@uncommon} &8| &7Minecart"
+    set {powerAttributes::minecart::cooldown} to 1.5 seconds
+    set {powerAttributes::minecart::damage} to 2.5
+    set {powerAttributes::minecart::stack-size} to 3
+    set lore of {powers::minecart} to "&7▌ &fDash in your direction and", "&fcrash into nearby opponents."
+
+    set {powers::stalagmites} to pointed dripstone named "{@uncommon} &8| <##D9B99B>Stalagmites"
+    set {powerAttributes::stalagmites::cooldown} to 3 seconds
+    set {powerAttributes::stalagmites::damage} to 2
+    set {powerAttributes::stalagmites::stack-size} to 3
+    set lore of {powers::stalagmites} to "&7▌ &fRaise dripstones from the earth", "&fto impale your foes."
+
+    set {powers::piano} to {heads::piano} named "{@rare} &8| &fPiano"
+    set {powerAttributes::piano::cooldown} to 7 seconds
+    set {powerAttributes::piano::damage} to 5
+    set {powerAttributes::piano::range} to 64
+    set {powerAttributes::piano::stack-size} to 1
+    set lore of {powers::piano} to "&7▌ &fAim this at your cursor, and your opponent will B flat!"
+
+    set {powers::lightning-rod} to lightning rod named "{@uncommon} &8| &bLightning Rod"
+    set {powerAttributes::lightning-rod::cooldown} to 5 seconds
+    set {powerAttributes::lightning-rod::damage} to 1.5
+    set {powerAttributes::lightning-rod::range} to 64
+    set {powerAttributes::lightning-rod::stack-size} to 3
+    set lore of {powers::lightning-rod} to "&7▌ &fAim this at your cursor to smite your opponent 3 times!"
+    
+    set {powers::barrel} to barrel named "{@uncommon} &8| <##D9B99B>Barrel"
+    set {powerAttributes::barrel::cooldown} to 2 seconds
+    set {powerAttributes::barrel::damage} to 2
+    set {powerAttributes::barrel::stack-size} to 5
+    set lore of {powers::barrel} to "&7▌ &fRoll over your opponents gorilla style!"
+
+    set {powers::tennis-cannon} to {heads::tennis-cannon} named "{@epic} &8| &eTennis Cannon"
+    set {powerAttributes::tennis-cannon::cooldown} to 5 seconds
+    set {powerAttributes::tennis-cannon::damage} to 2.5
+    set {powerAttributes::tennis-cannon::stack-size} to 1
+    set lore of {powers::tennis-cannon} to "&7▌ &fMount a cannon and fire tennis balls!"
+    
+    set {powers::fire-in-a-bottle} to {heads::fire-in-a-bottle} named "{@uncommon} &8| &6Fire In A Bottle"
+    set {powerAttributes::fire-in-a-bottle::cooldown} to 1 seconds
+    set {powerAttributes::fire-in-a-bottle::damage} to 1
+    set {powerAttributes::fire-in-a-bottle::stack-size} to 6
+    set lore of {powers::fire-in-a-bottle} to "&7▌ &fBurn your opponents to a crisp!"
+
+    apply consumable component to {powers::fire-in-a-bottle}:
+        consume_seconds: 0.25 seconds
+        animation: "drink"
+        sound: "entity.generic.drink"
+        has_consume_particles: false
+
+    apply food component to {powers::fire-in-a-bottle}:
+        nutrition: 0
+        saturation: 0
+        can_always_eat: true
+
+    set {powers::giant-mushroom} to {heads::giant-mushroom} named "{@rare} &8| <##D9B99B>Giant Mushroom"
+    set {powerAttributes::giant-mushroom::cooldown} to 5 seconds
+    set {powerAttributes::giant-mushroom::damage} to 2.5
+    set {powerAttributes::giant-mushroom::range} to 32
+    set {powerAttributes::giant-mushroom::stack-size} to 3
+    set lore of {powers::giant-mushroom} to "&7▌ &fSend your opponents flying with the wrath of nature!"
+
+    set {powers::cake-platform} to {heads::cake} named "{@uncommon} &8| &fCake Platform"
+    set {powerAttributes::cake-platform::cooldown} to 1.5 seconds
+    set {powerAttributes::cake-platform::range} to 8
+    set {powerAttributes::cake-platform::range-bypass} to true
+    set {powerAttributes::cake-platform::stack-size} to 5
+    set lore of {powers::cake-platform} to "&7▌ &fJump on your cake and eat it too!"
+
+    set {powers::ufo} to {heads::ufo} named "{@legendary} &8| &2UFO"
+    set {powerAttributes::ufo::cooldown} to 10 seconds
+    set {powerAttributes::ufo::damage} to 2.5
+    set {powerAttributes::ufo::stack-size} to 1
+    set lore of {powers::ufo} to "&7▌ &fThe Martians entrust you with their latest technology."
+
+    set {powers::nether-portal} to end crystal named "{@rare} &8| &dNether Portal"
+    set {powerAttributes::nether-portal::cooldown} to 5 seconds
+    set {powerAttributes::nether-portal::damage} to 2.5
+    set {powerAttributes::nether-portal::range} to 32
+    set {powerAttributes::nether-portal::stack-size} to 2
+    set lore of {powers::nether-portal} to "&7▌ &fBlast your opponents with Nether energy."
+
+    set {powers::hook} to {heads::hook} named "{@uncommon} &8| &6Hook"
+    set {powerAttributes::hook::cooldown} to 3 seconds
+    set {powerAttributes::hook::damage} to 1
+    set {powerAttributes::hook::stack-size} to 5
+    set lore of {powers::hook} to "&7▌ &fReel your opponents into closer range!"
+
+    set {powers::smoke-bomb} to {heads::smoke-bomb} named "{@uncommon} &8| &7Smoke Bomb"
+    set {powerAttributes::smoke-bomb::cooldown} to 1 seconds
+    set {powerAttributes::smoke-bomb::range} to 12
+    set {powerAttributes::smoke-bomb::range-bypass} to true
+    set {powerAttributes::smoke-bomb::stack-size} to 3
+    set lore of {powers::smoke-bomb} to "&7▌ &fSneak out of tricky situations in a plume of smoke."
+
+    set {powers::meteor-strike} to {heads::meteor} named "{@epic} &8| &7Meteor Strike"
+    set {powerAttributes::meteor-strike::cooldown} to 3 seconds
+    set {powerAttributes::meteor-strike::impact-damage} to 3.25
+    set {powerAttributes::meteor-strike::burn-damage} to 0.75
+    set {powerAttributes::meteor-strike::range} to 24
+    set {powerAttributes::meteor-strike::stack-size} to 3
+    set lore of {powers::meteor-strike} to "&7▌ &fBlast your opponents to smitheerens, leaving a crater behind."
+
+    set {powers::mighty-mace} to mace named "{@rare} &8| &fMighty Mace" with item flag hide attributes
+    set {powerAttributes::mighty-mace::cooldown} to 7 seconds
+    set {powerAttributes::mighty-mace::damage} to 3.5
+    set {powerAttributes::mighty-mace::stack-size} to 3
+    set lore of {powers::mighty-mace} to "&7▌ &fSmoosh your foes with the mightiest mace of them all!"
+
+    set {powers::petrify} to {heads::stone} named "{@uncommon} &8| &7Petrify"
+    set {powerAttributes::petrify::cooldown} to 5 seconds
+    set {powerAttributes::petrify::damage} to 2.5
+    set {powerAttributes::petrify::stack-size} to 3
+    set lore of {powers::petrify} to "&7▌ &fBecome a stone, absorbing a hit and emitting shockwaves."
+
+    set {powers::traffic-lights} to {heads::traffic-lights} named "{@rare} &8| &fTraffic Lights"
+    set {powerAttributes::traffic-lights::cooldown} to 3 seconds
+    set {powerAttributes::traffic-lights::damage} to 3.5
+    set {powerAttributes::traffic-lights::stack-size} to 3
+    set {powerAttributes::traffic-lights::range} to 64
+    set lore of {powers::traffic-lights} to "&7▌ &fPut up traffic lights and watch cars go by, ramming into opponents."
+
+    set {powers::magic-stew} to {heads::magic-stew} named "{@epic} &8| <##D9B99B>Magic Stew"
+    set {powerAttributes::magic-stew::cooldown} to 3 seconds
+    set {powerAttributes::magic-stew::damage} to 2.5
+    set {powerAttributes::magic-stew::stack-size} to 3
+    set lore of {powers::magic-stew} to "&7▌ &fHurl a pot of stew, transforming", "&fallies and foes into mooshrooms.", "&fAffected foes cannot cast powers."
+    
+    set {powers::drill} to {heads::drill} named "{@rare} &8| &7Drill"
+    set {powerAttributes::drill::cooldown} to 7 seconds
+    set {powerAttributes::drill::damage} to 1.5
+    set {powerAttributes::drill::stack-size} to 3
+    set lore of {powers::drill} to "&7▌ &fBurrow rapidly through the earth,", "&fdamaging foes from above."
+
+    set {powers::windmill} to loom named "{@uncommon} &8| &fWindmill"
+    set {powerAttributes::windmill::cooldown} to 5 seconds
+    set {powerAttributes::windmill::range} to 8
+    set {powerAttributes::windmill::stack-size} to 4
+    set lore of {powers::windmill} to "&7▌ &fPlace a windmill,", "&fblowing nearby players away."
+
+    set {powers::magmarizer} to {heads::magmarizer} named "{@epic} &8| &cMagmarizer"
+    set {powerAttributes::magmarizer::damage} to 1.5
+    set {powerAttributes::magmarizer::cooldown} to 7 seconds
+    set {powerAttributes::magmarizer::stack-size} to 1
+    set lore of {powers::magmarizer} to "&7▌ &fCharge up a devastating magma beam,", "&fdealing rapid damage to enemies."
+
+    apply consumable component to {powers::magmarizer}:
+        consume_seconds: 1 seconds
+        animation: "bow"
+        sound: ""
+        has_consume_particles: false
+
+    apply food component to {powers::magmarizer}:
+        nutrition: 0
+        saturation: 0
+        can_always_eat: true
+
+    set {powers::ice-in-a-bottle} to {heads::ice-in-a-bottle} named "{@rare} &8| &bIce in a Bottle"
+    set {powerAttributes::ice-in-a-bottle::cooldown} to 1 seconds
+    set {powerAttributes::ice-in-a-bottle::damage} to 0.75
+    set {powerAttributes::ice-in-a-bottle::stack-size} to 8
+    set lore of {powers::ice-in-a-bottle} to "&7▌ &fCast a blizzard on your opponents,", "&fslowing them temporarily."
+
+    apply consumable component to {powers::ice-in-a-bottle}:
+        consume_seconds: 0.25 seconds
+        animation: "drink"
+        sound: "entity.generic.drink"
+        has_consume_particles: false
+
+    apply food component to {powers::ice-in-a-bottle}:
+        nutrition: 0
+        saturation: 0
+        can_always_eat: true
+
+    set {powers::steamroller} to {heads::steamroller} named "{@legendary} &8| &eSteamroller"
+    set {powerAttributes::steamroller::cooldown} to 15 seconds
+    set {powerAttributes::steamroller::damage} to 3.5
+    set {powerAttributes::steamroller::stack-size} to 1
+    set lore of {powers::steamroller} to "&7▌ &fEnter a giant steamroller,", "&fgrinding your opponents to dust."
+
+    set {powers::rocket} to {heads::rocket} named "{@epic} &8| &cRocket"
+    set {powerAttributes::rocket::cooldown} to 12.5 seconds
+    set {powerAttributes::rocket::range} to 128
+    set {powerAttributes::rocket::damage} to 3.5
+    set {powerAttributes::rocket::stack-size} to 2
+    set lore of {powers::rocket} to "&7▌ &fEnter a rocket which ensures an", "&fexplosive arrival to your destination."
+
+    set {powers::blender} to {heads::blender} named "{@rare} &8| &fBlender"
+    set {powerAttributes::blender::cooldown} to 5 seconds
+    set {powerAttributes::blender::range} to 16
+    set {powerAttributes::blender::range-bypass} to true
+    set {powerAttributes::blender::damage} to 0.25
+    set {powerAttributes::blender::stack-size} to 3
+    set lore of {powers::blender} to "&7▌ &fSummon a blender which sucks enemies", "&ftowards it, dealing low damage."
+
+    set {powers::shulker-box} to shulker box named "{@rare} &8| &dShulker Box"
+    set {powerAttributes::shulker-box::cooldown} to 10 seconds
+    set {powerAttributes::shulker-box::range} to 3.5
+    set {powerAttributes::shulker-box::range-bypass} to true
+    set {powerAttributes::shulker-box::damage} to 2.5
+    set {powerAttributes::shulker-box::stack-size} to 2
+    set lore of {powers::shulker-box} to "&7▌ &fEncase the nearest opponent in a", "&fshulker box before launching them", "&fand doing medium damage."
+
+    #set {powers::vent} to iron trapdoor named "{@uncommon} &8| &fVent"
+    #set {powerAttributes::vent::cooldown} to 5 seconds
+    #set {powerAttributes::vent::range} to 32
+    #set {powerAttributes::vent::range-bypass} to true
+    #set {powerAttributes::vent::damage} to 1.5
+    #set {powerAttributes::vent::stack-size} to 2
+    #set lore of {powers::vent} to "&7▌ &fHide inside a vent before", "&frevealing yourself at your target location,", "&fambushing your opponents."
+
+    #set {powers::fist} to {heads::iron-fist} named "{@uncommon} &8| &7Fist"
+    set {powers::fist} to {heads::stone-fist} named "{@uncommon} &8| &7Fist"
+    set {powerAttributes::fist::cooldown} to 3 seconds
+    set {powerAttributes::fist::damage} to 2.5
+    set {powerAttributes::fist::stack-size} to 4
+    set lore of {powers::fist} to "&7▌ &fThrow out a fist in front of you,", "&fdealing high knockback", "&fand medium damage."
+
+    set {powers::landmines} to {heads::landmines} named "{@uncommon} &8| &cLandmines"
+    set {powerAttributes::landmines::cooldown} to 0.5 seconds
+    set {powerAttributes::landmines::damage} to 1.5
+    set {powerAttributes::landmines::stack-size} to 6
+    set lore of {powers::landmines} to "&7▌ &fThrow a landmine which attaches to", "&fthe block it lands on, dealing", "&flow damage to bypassers."
+
+    set {powers::hot-air-balloon} to light blue wool named "{@epic} &8| &fHot Air Balloon"
+    set {powerAttributes::hot-air-balloon::cooldown} to 10 seconds
+    set {powerAttributes::hot-air-balloon::range} to 64
+    set {powerAttributes::hot-air-balloon::damage} to 4
+    set {powerAttributes::hot-air-balloon::stack-size} to 2
+    set lore of {powers::hot-air-balloon} to "&7▌ &fDeploy a hot air balloon, which can be used", "&fto send nearby opponents into the sky!"
+
+    set {powers::drone} to {heads::camera} named "{@rare} &8| &fDrone"
+    set {powerAttributes::drone::cooldown} to 7 seconds
+    set {powerAttributes::drone::damage} to 2.5
+    set {powerAttributes::drone::stack-size} to 3
+    set lore of {powers::drone} to "&7▌ &fDeploy a remote-controlled drone", "&fwhich explodes enemies upon impact."
+
+    set {powers::pothole} to {heads::miner-zombie} named "{@rare} &8| &7Pothole"
+    set {powerAttributes::pothole::cooldown} to 3 seconds
+    set {powerAttributes::pothole::range} to 24
+    set {powerAttributes::pothole::damage} to 2
+    set {powerAttributes::pothole::stack-size} to 4
+    set lore of {powers::pothole} to "&7▌ &fSet up a pothole from which a miner zombie", "&fwill pop out and deal damage to nearby foes."
+
+    set {powers::barricade} to birch wood named "{@uncommon} &8| <##D9B99B>Barricade"
+    set {powerAttributes::barricade::cooldown} to 1 seconds
+    set {powerAttributes::barricade::damage} to 1
+    set {powerAttributes::barricade::stack-size} to 5
+    set lore of {powers::barricade} to "&7▌ &fRaise a wall in front of the user made out of wood", "&fwhich does low damage to nearby enemies."
+
+    set {powers::beacon} to beacon named "{@epic} &8| &bBeacon"
+    set {powerAttributes::beacon::cooldown} to 10 seconds
+    set {powerAttributes::beacon::radius} to 8
+    set {powerAttributes::beacon::stack-size} to 3
+    set lore of {powers::beacon} to "&7▌ &fSummon an beacon which increases the", "&fwalkspeed of the user and their teammates when nearby."
+
+    loop indices of {powers::*}:
+        set {_power} to loop-value
+        set lore of {powers::%{_power}%} to "", lore of {powers::%{_power}%} and ""
+        set {_attributes::*} to indices of {powerAttributes::%{_power}%::*}
+
+        if {_attributes::*} contains "cooldown":
+            set {_cooldown} to (ticks of {powerAttributes::%{_power}%::cooldown}) / 20
+            set {_text} to toSmallFont("COOLDOWN: %{_cooldown}%s")
+            add "&b⌚ &b&l%{_text}%" to lore of {powers::%{_power}%}
+
+        set {_num-damage-attributes} to 0
+        loop {_attributes::*} where [input contains "damage"]:
+            add 1 to {_num-damage-attributes}
+            if {_num-damage-attributes} = 1:
+                set {_colour} to "&c"
+            else if {_num-damage-attributes} >= 2:
+                set {_colour} to "&e"
+            set {_attribute} to loop-value-2
+            set {_damage} to {powerAttributes::%{_power}%::%{_attribute}%}
+            set {_temp} to uppercase {_attribute}
+            replace "-" with " " in {_temp}
+            set {_text} to toSmallFont("%{_temp}%: %{_damage}%")
+            add "%{_colour}%🗡 %{_colour}%&l%{_text}%❤" to lore of {powers::%{_power}%}
+    
+        if {_attributes::*} contains "range":
+            set {_range} to {powerAttributes::%{_power}%::range}
+            set {_text} to toSmallFont("RANGE: %{_range}%")
+            add "&f🏹 &f&l%{_text}%" to lore of {powers::%{_power}%}
+
+        if {_attributes::*} contains "radius":
+            set {_radius} to {powerAttributes::%{_power}%::radius}
+            set {_text} to toSmallFont("RADIUS: %{_radius}%")
+            add "&f☀ &f&l%{_text}%" to lore of {powers::%{_power}%}
+
+    loop indices of {powers::*}:
+        set int tag "IsPower" of custom nbt compound of {powers::%loop-value%} to 1
+        set {_power} to {powers::%loop-value%}
+        set {_rarity} to getRarity(name of {_power})
+        add loop-value to {power-names-by-rarity::%{_rarity}%::*}
+        add {_power} to {powers-by-rarity::%{_rarity}%::*}
+
+
+#using script reflection
+
+#on script load:
+#    loop indices of {powers::*}:
+#        set {-func::%loop-value%} to function named loop-value from script named #"game/powers/%loop-value%"
+
+on tool change:
+
+    name of event-slot != name of past event-slot
+
+    #indices of {-power-duration::%player%::*} is set:
+    #    set line 12 of player's fastboard to ""
+    #    set line 13 of player's fastboard to ""
+    #else:
+    #    clear line 12 of player's fastboard
+    #    clear line 13 of player's fastboard
+
+    #indices of {-power-cooldown-length::%player%::*} is set:
+    #    set line 14 of player's fastboard to ""
+    #    set line 15 of player's fastboard to ""
+    #else:
+    #    clear line 14 of player's fastboard
+    #    clear line 15 of player's fastboard
+
+    clear line 12 of player's fastboard
+    clear line 13 of player's fastboard
+
+    clear line 14 of player's fastboard
+    clear line 15 of player's fastboard
+
+function startDuration(p: player, name: text, length: timespan):
+
+    set {-power-duration::%{_p}%::%{_name}%} to now
+    set {-power-duration-length::%{_p}%::%{_name}%} to {_length}
+
+    set {_i} to {powers::%{_name}%}
+
+    loop (ticks of {_length}) times:
+
+        if {_name} != "magic-stew":
+            if {-power-active::%{_p}%::%{_name}%} is not set:
+                exit loop
+        else if {-transformed::%{_p}%::magic-stew} != true:
+            exit loop
+
+        #set {_time-since-duration} to time since {-power-duration::%{_p}%::%{_name}%}
+        set {_duration-length} to {-power-duration-length::%{_p}%::%{_name}%}
+
+        set line 12 of {_p}'s fastboard to name of {_i}
+        set {_time-ratio} to loop-value / (ticks of {_duration-length})
+        set {_time-diff} to (ticks of {_duration-length}) - loop-value
+
+        set {_progress} to floor({_time-ratio} * 10)
+        set {_display} to ""
+
+        loop {_progress} times:
+            set {_display} to "%{_display}%&3&l▌"
+        loop 10 - {_progress} times:
+            set {_display} to "%{_display}%&8&l▌"
+
+        if mod({_time-diff}, 2) = 0:
+            if mod({_time-diff}, 20) = 0:
+                set {_display} to "&b%{_time-diff} / 20%.0s %{_display}%"
+            else:
+                set {_display} to "&b%{_time-diff} / 20%s %{_display}%"
+
+            set line 13 of {_p}'s fastboard to {_display}
+    
+        wait 1 tick
+
+    delete {-power-duration::%{_p}%::%{_name}%}
+    delete {-power-duration-length::%{_p}%::%{_name}%}
+
+    set line 12 of fastboard of {_p} to ""
+    set line 13 of fastboard of {_p} to ""
+
+function startCooldown(p: player, name: text, length: timespan):
+
+
+    #loop {-beacon::*}:
+    #    if distance between {_p} and loop-value < {powerAttributes::beacon::radius}:
+    #        set {_length} to {_length} * (1 / 1.2)
+    #        exit loop
+
+    set {-power-cooldown-length::%{_p}%::%{_name}%} to {_length}
+
+    set {_i} to {powers::%{_name}%}
+    set {_i-name} to name of {_i}
+
+    set {-power-on-cooldown::%{_p}%::%{_name}%} to true
+
+    loop (ticks of {_length}) times:
+
+        if unformat(name of {_p}'s tool) = {_name}:
+
+            #set {_time-since-cooldown} to time since {-power-cooldown-set::%{_p}%::%{_name}%}
+            set {_cooldown-length} to {-power-cooldown-length::%{_p}%::%{_name}%}
+
+            set line 14 of {_p}'s fastboard to {_i-name}
+            set {_time-ratio} to loop-value / (ticks of {_cooldown-length})
+            set {_time-diff} to (ticks of {_cooldown-length}) - loop-value
+
+            set {_progress} to floor({_time-ratio} * 10)
+            set {_display} to ""
+
+            loop {_progress} times:
+                set {_display} to "%{_display}%&a&l▌"
+            loop 10 - {_progress} times:
+                set {_display} to "%{_display}%&8&l▌"
+
+
+            if mod({_time-diff}, 2) = 0:
+                if mod({_time-diff}, 20) = 0:
+                    set {_display} to "&e%{_time-diff} / 20%.0s %{_display}%"
+                else:
+                    set {_display} to "&e%{_time-diff} / 20%s %{_display}%"
+
+                set line 15 of {_p}'s fastboard to {_display}
+        
+        else if line 14 of {_p}'s fastboard = {_i-name}:
+            set line 14 of fastboard of {_p} to ""
+            set line 15 of fastboard of {_p} to ""
+
+        wait 1 tick
+
+    delete {-power-on-cooldown::%{_p}%::%{_name}%}
+    delete {-power-cooldown-length::%{_p}%::%{_name}%}
+
+    set line 14 of fastboard of {_p} to ""
+    set line 15 of fastboard of {_p} to ""
+
+
+function castPower(p: player, name: text, item: item):
+
+    if {-powers-locked::%{_p}%} is set:
+        if {-powers-locked::%{_p}%} = true:
+            stop
+
+    if {-power-active::%{_p}%::%{_name}%} is set:
+        stop
+
+    set {_cooldown} to {powerAttributes::%{_name}%::cooldown}
+
+    {-power-on-cooldown::%{_p}%::%{_name}%} != true
+    #time since {-power-cooldown-set::%{_p}%::%{_name}%} is set:
+    #    time since {-power-cooldown-set::%{_p}%::%{_name}%} < {_cooldown}:
+    #        stop
+
+    #execute function {-func::%{_name}%} with {_p}
+
+    if {_name} = "missile":
+        missile({_p})
+    if {_name} = "giant-snowball":
+        giantSnowball({_p})
+    if {_name} = "sledgehammer":
+        sledgehammer({_p})
+    if {_name} = "burger":
+        burger({_p})
+    if {_name} = "popcorn":
+        popcorn({_p})
+    if {_name} = "dave-9000":
+        dave9000({_p})
+    if {_name} = "flying-machine":
+        flyingMachine({_p})
+    if {_name} = "minecart":
+        minecart({_p})
+    if {_name} = "stalagmites":
+        stalagmites({_p})
+    if {_name} = "piano":
+        piano({_p})
+    if {_name} = "lightning-rod":
+        lightningRod({_p})
+    if {_name} = "barrel":
+        barrel({_p})
+    if {_name} = "tennis-cannon":
+        tennisCannon({_p})
+    if {_name} = "fire-in-a-bottle":
+        fireInABottle({_p})
+    if {_name} = "giant-mushroom":
+        giantMushroom({_p})
+    if {_name} = "cake-platform":
+        cakePlatform({_p})
+    if {_name} = "ufo":
+        ufo({_p})
+    if {_name} = "nether-portal":
+        netherPortal({_p})
+    if {_name} = "hook":
+        hook({_p})
+    if {_name} = "smoke-bomb":
+        smokeBomb({_p})
+    if {_name} = "meteor-strike":
+        meteor({_p})
+    if {_name} = "mighty-mace":
+        mightyMace({_p})
+    if {_name} = "petrify":
+        petrify({_p})
+    if {_name} = "traffic-lights":
+        trafficLights({_p})
+    if {_name} = "magic-stew":
+        magicStew({_p})
+    if {_name} = "drill":
+        drill({_p})
+    if {_name} = "windmill":
+        windmill({_p})
+    if {_name} = "magmarizer":
+        magmarizer({_p})
+    if {_name} = "ice-in-a-bottle":
+        iceInABottle({_p})
+    if {_name} = "steamroller":
+        steamroller({_p})
+    if {_name} = "rocket":
+        rocket({_p})
+    if {_name} = "blender":
+        blender({_p})
+    if {_name} = "shulker-box":
+        shulkerBox({_p})
+    #if {_name} = "vent":
+    #    vent({_p})
+    if {_name} = "fist":
+        fist({_p})
+    if {_name} = "landmines":
+        landmines({_p})
+    if {_name} = "hot-air-balloon":
+        hotAirBalloon({_p})
+    if {_name} = "drone":
+        drone({_p})
+    if {_name} = "pothole":
+        pothole({_p})
+    if {_name} = "barricade":
+        barricade({_p})
+    if {_name} = "beacon":
+        beacon({_p})
+
+    set {_num-uses} to {powerAttributes::%{_name}%::numUses}
+
+    #if {_num-uses} > 1:
+
+    #    loop items in {_p}'s inventory where [unformat(name of input) = {_name}]:
+    #        set durability of loop-value to durability of loop-value - 1
+    #        if durability of loop-value = 0:
+    #            remove 1 of loop-value from inventory of {_p}
+    #            play sound "entity.item.break" at volume 10 at pitch 1 to {_p} 
+    #        exit loop
+
+    #else:
+    #    remove 1 of {_item} from inventory of {_p}
+    
+    remove 1 of {_item} from inventory of {_p}
+
+    while {-power-active::%{_p}%::%{_name}%} is set:
+        wait 1 tick
+
+    set {-power-cooldown-set::%{_p}%::%{_name}%} to now
+    startCooldown({_p}, {_name}, {_cooldown})
+
+    loop items in {_p}'s inventory where [unformat(name of input) = {_name}]:
+        set item cooldown of loop-value for {_p} to {_cooldown}
+
+on right click:
+    set {_name} to unformat(name of player's tool)
+    {_name} != "fire-in-a-bottle" or "magmarizer" or "ice-in-a-bottle"
+    indices of {powers::*} contains {_name}:
+        cancel event
+        {-powers-locked::%player%} != true
+        set {_target} to target entity of player
+        if {-is-party-cannon-interaction::%{_target}%} is set:
+            if distance between player and {_target} <= 4.5:
+                stop
+        if {_name} = "stalagmites" or "dave-9000" or "vent" or "barricade":
+            player is not on ground:
+                errorActionBar(player, "&cMust be on ground to use %{_name} in proper case%!")
+                stop
+        else if {_name} = "shulker-box":
+            set {_range} to {powerAttributes::%{_name}%::range}
+            set {_entities::*} to getLivingEntities(player, player's location, {_range}) where [isFreeToMove(input) = true]
+            set {_nearest} to getNearest(player, player's location, {_entities::*})
+            if {_nearest} is not set:
+                errorActionBar(player, "&cNot near an enemy!")
+                stop
+        else if {powerAttributes::%{_name}%::range} is set:
+            {powerAttributes::%{_name}%::range-bypass} != true
+            set {_l} to getTargetLocation(player, {powerAttributes::%{_name}%::range})
+            if {_l} is not set:
+                errorActionBar(player, "&cOut of range!")
+                stop
+        castPower(player, {_name}, player's tool)
+
+on block place:
+    set {_name} to unformat(name of player's tool)
+    {_name} = "fire-in-a-bottle" or "magmarizer" or "ice-in-a-bottle":
+        cancel event
+
+on right click:
+    set {_name} to unformat(name of player's tool)
+    if {_name} = "magmarizer":
+        if all:
+            {-power-active::%player%::magmarizer} != true
+            {-power-on-cooldown::%player%::magmarizer} != true
+            (time since {-magmarizer-charging::%player%}) ? 1 second > 0.5 seconds
+        then:
+            set {-magmarizer-charging::%player%} to now
+            play sound "block.vault.insert_item" at volume 3 at pitch 1 at player
+            play sound "block.trial_spawner.about_to_spawn_item" at volume 3 at pitch 2 at player
+            draw 1 orange flash particle at location 1.3 above player
+
+on consume:
+    set {_name} to unformat(name of player's tool)
+    if {_name} = "fire-in-a-bottle":
+        cancel event
+        castPower(player, "fire-in-a-bottle", player's tool)
+    if {_name} = "magmarizer":
+        cancel event
+        castPower(player, "magmarizer", player's tool)
+    if {_name} = "ice-in-a-bottle":
+        cancel event
+        castPower(player, "ice-in-a-bottle", player's tool)

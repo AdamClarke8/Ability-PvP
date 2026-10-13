@@ -1,0 +1,284 @@
+options:
+    speed: 4
+
+on script load:
+    delete {action-bar-text::tennis-cannon::*}
+    set {action-bar-text::tennis-cannon::1} to "<##FFF800>RIGHT CLICK TO SHOOT TENNIS BALL"
+    set {action-bar-text::tennis-cannon::2} to "<##FFF800>RIGHT CLICK TO SHOOT TENNIS BALL"
+    set {action-bar-text::tennis-cannon::3} to "<##FFF800>RIGHT CLICK TO SHOOT TENNIS BALL"
+    set {action-bar-text::tennis-cannon::4} to "<##FFF800>RIGHT CLICK TO SHOOT TENNIS BALL"
+    set {action-bar-text::tennis-cannon::5} to "<##FFF800>RIGHT CLICK TO SHOOT TENNIS BALL"
+    set {action-bar-text::tennis-cannon::6} to "<##F6F000>RIGHT CLICK TO SHOOT TENNIS BALL"
+    set {action-bar-text::tennis-cannon::7} to "<##EEE800>RIGHT CLICK TO SHOOT TENNIS BALL"
+    set {action-bar-text::tennis-cannon::8} to "<##E9E100>RIGHT CLICK TO SHOOT TENNIS BALL"
+    set {action-bar-text::tennis-cannon::9} to "<##E7E100>RIGHT CLICK TO SHOOT TENNIS BALL"
+    set {action-bar-text::tennis-cannon::10} to "<##DBD500>RIGHT CLICK TO SHOOT TENNIS BALL"
+    set {action-bar-text::tennis-cannon::11} to "<##D0CB00>RIGHT CLICK TO SHOOT TENNIS BALL"
+    set {action-bar-text::tennis-cannon::12} to "<##C6C100>RIGHT CLICK TO SHOOT TENNIS BALL"
+    set {action-bar-text::tennis-cannon::13} to "<##B8B400>RIGHT CLICK TO SHOOT TENNIS BALL"
+    set {action-bar-text::tennis-cannon::14} to "<##A7A300>RIGHT CLICK TO SHOOT TENNIS BALL"
+    set {action-bar-text::tennis-cannon::15} to "<##949100>RIGHT CLICK TO SHOOT TENNIS BALL"
+    set {action-bar-text::tennis-cannon::16} to "<##858200>RIGHT CLICK TO SHOOT TENNIS BALL"
+    set {action-bar-text::tennis-cannon::17} to "<##858200>RIGHT CLICK TO SHOOT TENNIS BALL"
+    set {action-bar-text::tennis-cannon::18} to "<##858200>RIGHT CLICK TO SHOOT TENNIS BALL"
+    set {action-bar-text::tennis-cannon::19} to "<##858200>RIGHT CLICK TO SHOOT TENNIS BALL"
+    set {action-bar-text::tennis-cannon::20} to "<##858200>RIGHT CLICK TO SHOOT TENNIS BALL"
+    set {action-bar-text::tennis-cannon::21} to "<##949100>RIGHT CLICK TO SHOOT TENNIS BALL"
+    set {action-bar-text::tennis-cannon::22} to "<##A7A300>RIGHT CLICK TO SHOOT TENNIS BALL"
+    set {action-bar-text::tennis-cannon::23} to "<##B8B400>RIGHT CLICK TO SHOOT TENNIS BALL"
+    set {action-bar-text::tennis-cannon::24} to "<##C6C100>RIGHT CLICK TO SHOOT TENNIS BALL"
+    set {action-bar-text::tennis-cannon::25} to "<##D0CB00>RIGHT CLICK TO SHOOT TENNIS BALL"
+    set {action-bar-text::tennis-cannon::26} to "<##DBD500>RIGHT CLICK TO SHOOT TENNIS BALL"
+    set {action-bar-text::tennis-cannon::27} to "<##E7E100>RIGHT CLICK TO SHOOT TENNIS BALL"
+    set {action-bar-text::tennis-cannon::28} to "<##E9E100>RIGHT CLICK TO SHOOT TENNIS BALL"
+    set {action-bar-text::tennis-cannon::29} to "<##EEE800>RIGHT CLICK TO SHOOT TENNIS BALL"
+    set {action-bar-text::tennis-cannon::30} to "<##F6F000>RIGHT CLICK TO SHOOT TENNIS BALL"
+
+function tennisCannonShootBall(p: player):
+
+    set {_l} to location 3.5 infront of {_p}
+
+    spawn item display at location 1.3 above {_l}:
+        set {_display} to event-entity
+        set item of {_display} to {heads::tennis-ball}
+        set display scale of {_display} to vector(1, 1, 1)
+        set display translation of {_display} to vector(0, 0, 0)
+        set teleport duration of {_display} to 1 ticks
+        set interpolation duration of {_display} to 1 ticks
+
+    set {_temp-l} to location of {_display}
+
+    set {_v} to vector from yaw (yaw of {_p}) and pitch (pitch of {_p})
+    set vector length of {_v} to {@speed}
+    set {_vel-hori} to sqrt((x component of {_v}) ^ 2 + (z component of {_v}) ^ 2)
+    set {_vel-vert} to y component of {_v}
+    set {_acceleration} to 0.1
+
+    set {_angle} to 24 * (random element of 1 and -1)
+
+    #play sound "entity.egg.throw" at volume 3 at pitch 0.8 at {_l}
+    play sound "entity.breeze.shoot" at volume 2 at pitch 1.8 at {_l}
+
+    set {_bounces} to 0
+
+    while {_display} is alive:
+
+        if any:
+            {_vert-bounces} > 10
+            {_hori-bounces} > 10
+        then:
+            exit loop
+
+        loop 8 times:
+            set {_prev-l} to {_temp-l}
+            set {_vel-vert} to {_vel-vert} - {_acceleration} / 8
+            set {_temp-l} to location {_vel-vert} / 8 above location {_vel-hori} / 8 horizontally infront {_temp-l}
+
+            if {_prev-l} != {_temp-l}:
+                set {_ray} to ray trace from {_prev-l} along (vector from {_prev-l} to {_temp-l}) with max distance 0.5 while ignoring passable blocks
+
+            set {_face} to ray trace hit blockface of {_ray}
+            if {_face} is set:
+                if {_face} = east_face or west_face:
+                    set x component of {_v} to x component of {_v} * -1
+                else if {_face} = south_face or north_face:
+                    set z component of {_v} to z component of {_v} * -1
+
+                if {_face} = up_face or down_face:
+                    add 1 to {_vert-bounces}
+                    set {_vel-vert} to (1 / {_vert-bounces}) * {_vel-vert} * -1
+                    set {_temp-l} to location {_vel-vert} / 8 above {_temp-l}
+                else:
+                    add 1 to {_hori-bounces}
+                    set yaw of {_temp-l} to yaw of {_v}
+                    #set {_vel-hori} to (1 / {_hori-bounces}) * {_vel-hori}
+                    set {_temp-l} to location {_vel-hori} / 8 infront of {_temp-l}
+    
+                #play sound "enchant.thorns.hit" at volume 2 at pitch 1.2 at {_temp-l}
+                #play sound "entity.player.add_item" at volume 3 at pitch 0.8 at {_temp-l}
+                play sound "entity.player.attack.weak" at volume 2 at pitch 1.2 at {_temp-l}
+                #play sound "entity.player.attack.knockback" at volume 2 at pitch 1.8 at {_temp-l}
+                #if {except::*} does not contain block at {_prev-l}:
+                #    exit all loops
+
+            set {_targets::*} to getLivingEntities({_p}, {_temp-l}, 2) where [input != {_p}]
+            {_targets::*} is set:
+                exit all loops
+            
+
+        wait 1 tick
+
+        set interpolation delay of {_display} to 0 ticks
+
+        teleport {_display} to {_temp-l}
+        rotate {_display} around y-axis by {_angle} degrees
+        rotate {_display} around x-axis by {_angle} / 2 degrees
+
+        if mod(loop-counter, 2) = 0:
+            draw 1 green wool block particle at {_display}
+            #draw 1 block using fire at {_display}
+            #draw 1 firework at {_display} with particle speed 0
+
+        play sound "entity.breeze.land" at volume 2 at pitch 1.5 at {_display}
+
+    loop {_targets::*}:
+        makeDamage({_p}, loop-value, {powerAttributes::tennis-cannon::damage}, "tennis-cannon")
+        play sound "entity.player.attack.knockback" at volume 2 at pitch 1.2 at loop-value
+
+    kill {_display}
+    draw 1 explosion particle at {_temp-l}
+    play sound "block.wool.break" at volume 3 at pitch 0.8 at {_temp-l}
+    play sound "entity.generic.explode" at volume 3 at pitch 1.5 at {_temp-l}
+    throwOutFallingBlock({_temp-l}, "up", 0.5)
+    #play sound "entity.chicken.egg" at volume 3 at pitch 1.2 at {_temp-l}
+
+
+function tennisCannon(p: player):
+
+    set {-power-active::%{_p}%::tennis-cannon} to true
+    set {-powers-locked::%{_p}%} to true
+
+    set {_l} to {_p}'s location
+    set {_seat-displays::*} to buildingToDisplay({structure::tennis-cannon-seat::1}, {structure::tennis-cannon-seat::2}, {structure::tennis-cannon-seat::centre}, 0.75, {_l})
+    set {_seat-root} to {_seat-displays::1}
+    set {_barrel-displays::*} to buildingToDisplay({structure::tennis-cannon-barrel::1}, {structure::tennis-cannon-barrel::2}, {structure::tennis-cannon-barrel::centre}, 0.75, {_l})
+    set {_barrel-root} to {_barrel-displays::1}
+
+    spawn armor stand at {_l}:
+        set {_seat} to event-entity
+        set {-is-tennis-cannon-seat::%{_seat}%} to true
+        set generic scale attribute of {_seat} to 0.65
+        add nbt compound of "{Invisible:1b,Invulnerable:1b,Silent:1b}" to nbt compound of {_seat}
+        #set interaction width of {_seat} to 0
+        #set interaction height of {_seat} to 0
+
+    spawn interaction at {_l}:
+        set {_hitbox} to event-entity
+        set {-is-tennis-cannon-hitbox::%{_hitbox}%} to true
+        set interaction width of {_hitbox} to 3
+        set interaction height of {_hitbox} to 3
+
+    set yaw of {_l} to 0
+    set pitch of {_l} to 0
+
+    spawn item display at {_l}:
+        set {_ball-display} to event-entity
+        set item of {_ball-display} to {heads::tennis-ball}
+        set display scale of {_ball-display} to vector(1.25, 1.25, 1.25)
+        set teleport duration of {_ball-display} to 1 tick
+        set interpolation duration of {_ball-display} to 1 ticks
+        set display translation of {_ball-display} to vector(0, 0.35, 3.375)
+        make {_ball-display} ride {_barrel-root}
+
+    loop 4 times:
+        set {_n} to loop-value
+        spawn item display at {_l}:
+            set {_display} to event-entity
+            set item of {_display} to {heads::tennis-ball}
+            set display scale of {_display} to vector(1.25, 1.25, 1.25)
+            set teleport duration of {_display} to 1 tick
+            set interpolation duration of {_display} to 1 ticks
+            set display translation of {_display} to vector(1, 0.35, 3.375 - {_n} * 0.75)
+            make {_display} ride {_barrel-root}
+        set {_ball-displays::%{_n}%} to {_display}
+
+    set {_vel} to velocity of {_p}
+    make {_p} ride {_seat}
+    set velocity of {_seat} to {_vel}
+
+    loop 36 times:
+        set {_v} to spherical vector radius 3, yaw loop-value * 10, pitch 0
+        draw 0 poof particle with offset {_v} with particle speed 0.25 at {_l} ~ {_v}
+        draw 0 firework particle with offset {_v} with particle speed 0.25 at location 0.5 above {_l} ~ {_v}
+        draw 1 bamboo planks block particle at {_l} ~ {_v}
+        #draw 0 cloud at {_l} ~ {_v} with offset {_v} with particle speed 0.25
+
+    set {_v} to vector(0, 0, 0)
+
+    play sound "entity.horse.armor" at volume 3 at pitch 1.2 at {_p}
+    play sound "block.vault.insert_item" at volume 3 at pitch 1.2 at {_p}
+    play sound "block.note_block.pling" at volume 3 at pitch 1.2 at {_p}
+
+    startDuration({_p}, "tennis-cannon", 150 ticks)
+    set {-action-bar::%{_p}%::tennis-cannon} to true
+    powerActionBar({_p}, "tennis-cannon")
+
+    loop 150 times:
+
+        set interpolation delay of {_ball-display} to 0 ticks
+        set {_temp-l} to location of {_seat}
+
+        if hasDied({_p}) = true:
+            exit loop
+
+        if {-cancel::%{_p}%::tennis-cannon} = true:
+            exit loop
+    
+        set {_yaw} to yaw of {_p}
+        set {_pitch} to pitch of {_p}
+
+        set {_ticks} to ticks of (time since {-last-shot::%{_p}%::tennis-cannon})
+
+        if {_ticks} <= 15:
+
+            if {_ticks} = 1:
+                set {_num-shots} to {-num-shots::%{_p}%::tennis-cannon}
+                set view range of {_ball-displays::%5 - {_num-shots}%} to 0
+            if {_ticks} < 7:
+                set view range of {_ball-display} to 0
+            else if {_ticks} = 7:
+                play sound "block.vault.insert_item" at volume 3 at pitch 1.5 at {_l}
+                set view range of {_ball-display} to 128
+            set {_hori-offset} to easeOutBounce({_ticks} / 15) - 1
+            set {_v} to vector from yaw {_yaw} and pitch {_pitch}
+            set {_v} to {_v} * {_hori-offset}
+    
+        teleport {_barrel-root} to location 1.35 above {_temp-l} ~ {_v}
+        teleport {_seat-root} to location 1.35 above {_temp-l}
+        #teleport {_ball-display} to location 1.35 above {_temp-l} ~ ({_v} * 2)
+
+        rotate({_seat-root}, {_yaw}, {_pitch}, false)
+        rotate({_barrel-root}, {_yaw}, {_pitch}, false)
+        teleport {_hitbox} to {_temp-l}
+
+        set yaw of {_seat} to {_yaw}
+        set pitch of {_seat} to {_yaw}
+
+        #rotate({_seat}, {_yaw}, {_pitch}, false)
+        #rotate({_ball-display}, yaw of {_p}, pitch of {_p}, false)
+
+        wait 1 tick
+
+    kill {_seat-root}
+    kill {_barrel-root}
+    kill {_seat}
+    kill {_hitbox}
+    kill {_ball-display}
+    kill {_ball-displays::*}
+
+    delete {-power-active::%{_p}%::tennis-cannon}
+    delete {-powers-locked::%{_p}%}
+    delete {-cancel::%{_p}%::tennis-cannon}
+    delete {-num-shots::%{_p}%::tennis-cannon}
+    delete {-action-bar::%{_p}%::tennis-cannon}
+    
+    create explosion of force 2 at {_temp-l}
+    itemDebris({_temp-l}, 3, bamboo slab)
+    play sound "block.beacon.deactivate" at volume 3 at pitch 1.2 at {_temp-l}
+    play sound "block.fire.extinguish" at volume 3 at pitch 1 at {_temp-l}
+
+on dismount:
+    if {-is-tennis-cannon-seat::%vehicle of player%} is set:
+        set {-cancel::%player%::tennis-cannon} to true
+
+on right click on interaction:
+    if {-power-active::%player%::tennis-cannon} = true: 
+        if {-is-tennis-cannon-seat::%vehicle of player%} is set:
+            if {-last-shot::%player%::tennis-cannon} is set:
+                time since {-last-shot::%player%::tennis-cannon} < 10 ticks:
+                    stop
+            set {-last-shot::%player%::tennis-cannon} to now
+            add 1 to {-num-shots::%player%::tennis-cannon}
+            tennisCannonShootBall(player)
+            if {-num-shots::%player%::tennis-cannon} = 5:
+                set {-cancel::%player%::tennis-cannon} to true

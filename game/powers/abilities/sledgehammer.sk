@@ -1,0 +1,89 @@
+function sledgehammer(p: player):
+
+    set {-power-active::%{_p}%::sledgehammer} to true
+
+    applyPush({_p}, horizontalVector({_p}) + vector(0, 2, 0), {_p}, "sledgehammer;windup")
+
+    loop 15 times:
+
+        play sound "item.trident.hit_ground" at volume 2 at pitch 1 + loop-value / 15 at {_p}
+        play sound "block.tripwire.attach" at volume 2 at pitch 0.5 + loop-value / 10 at {_p}
+        play sound "entity.iron_golem.attack" at volume 2 at pitch 0.5 + loop-value / 10 at {_p}
+        play sound "entity.breeze.charge" at volume 2 at pitch 1.25 + loop-value / 20 at {_p}
+
+        loop 4 times:
+            set {_v} to spherical vector radius 2 + (loop-value-1) / 6, yaw (loop-value-2) * 24 + ((loop-value-1) * 96), pitch 0
+            set {_draw-l} to {_p} ~ {_v}
+            draw 1 gust particle with particle speed 0 at {_draw-l}
+
+        if loop-counter > 4:
+            if {_p} is on ground:
+                exit loop
+
+        wait 1 tick
+
+    play sound "item.trident.riptide_3" at volume 3 at pitch 1.5 at {_p}
+    play sound "item.trident.riptide_3" at volume 3 at pitch 1 at {_p}
+    play sound "entity.blaze.shoot" at volume 3 at pitch 0.8 at {_p}
+    play sound "entity.ender_dragon.flap" at volume 3 at pitch 0.8 at {_p}
+
+    applyPush({_p}, vector(0, -1.5, 0), {_p}, "sledgehammer;windup-end")
+    draw 5 angry villager particle with offset vector(1, 1, 1) at {_p}
+
+    while {_p} is not on ground:
+
+        if hasDied({_p}) = true:
+            delete {-power-active::%{_p}%::sledgehammer}
+            stop
+
+        #make {_p} spin for 1 tick
+
+        draw 2 flame particle with offset vector(1.5, 1.5, 1.5) with particle speed 0.25 at {_p}
+        draw 1 campfire cosy smoke particle with offset vector(1.5, 1.5, 1.5) with particle speed 0.25 at {_p}
+    
+        wait 1 tick
+
+    delete {-power-active::%{_p}%::sledgehammer}
+
+    set {_impact-l} to location of {_p}
+
+    loop getLivingEntities({_p}, {_impact-l}, 7) where [input != {_p}]:
+        makeDamage({_p}, loop-value, {powerAttributes::sledgehammer::damage}, "sledgehammer")
+        applyPush(loop-value, (normalized vector from {_impact-l} to loop-value) + vector(0, 1.25, 0), {_p}, "sledgehammer")
+        draw 10 crit particle with offset vector(1, 1, 1) with particle speed 0.25 at head of loop-value
+        play sound "enchant.thorns.hit" at volume 3 at pitch 0.8 at loop-value
+
+
+    push {_p} up at speed 0.5
+
+    groundShakeArea({_impact-l}, 3)
+    spawnFloatingBlockCluster(location 0.5 below {_impact-l}, {heads::light-gray-orb}, 8, 7, 30, 0.3)
+
+    create fake explosion at {_impact-l}
+
+    play sound "block.anvil.place" at volume 3 at pitch 1.5 at {_impact-l}
+    play sound "item.totem.use" at volume 2 at pitch 1.5 at {_impact-l}
+    play sound "block.fire.extinguish" at volume 2 at pitch 0.8 at {_impact-l}
+
+    loop 36 times:
+        set {_v} to spherical vector radius 2, yaw loop-value * 10, pitch 0
+
+        set {_draw-l} to location 0.25 above {_impact-l} ~ {_v}
+
+        if {except::*} does not contain block at {_draw-l}:
+            set {_draw-l} to location 1 above {_draw-l}
+        if {except::*} contains block 1 below {_draw-l}:
+            set {_draw-l} to location 1 below {_draw-l}
+
+        draw 1 sweep attack particle at {_draw-l}
+        #draw 1 crit at {_draw-l} with particle speed 0.1
+
+    loop 3 times:
+
+        loop 180 times:
+            set {_v} to spherical vector radius 2, yaw (loop-value-2) * 2, pitch 0
+            draw 0 smoke particle with offset {_v} with particle speed 0.25 at {_impact-l} ~ {_v}
+            #draw 0 item using anvil at {_impact-l} ~ {_v} with offset {_v} with particle speed 0.5
+
+
+        wait 5 ticks

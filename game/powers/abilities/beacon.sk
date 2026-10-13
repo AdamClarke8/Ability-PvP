@@ -1,0 +1,86 @@
+options:
+	lifetime: 200
+	speed: 0.2
+
+function beacon(p: player):
+
+	set {_radius} to {powerAttributes::beacon::radius}
+
+	set {_target} to location 0.125 above getTargetLocation({_p}, 64)
+
+	spawn item display at {_target}:
+		set {_display} to event-entity
+		set item of {_display} to beacon
+		set display scale of {_display} to vector(1.25, 1.25, 1.25)
+		set teleport duration of {_display} to 1 tick
+		set interpolation duration of {_display} to 1 tick
+
+	strike lightning effect at {_target}
+	stop sounds "entity.lightning_bolt.impact" and "entity.lightning_bolt.thunder" in weather category for all players
+	draw 1 white flash particle at {_target}
+
+	play sound "item.trident.thunder" at volume 3 at pitch 1.2 at {_display}
+	play sound "block.beacon.activate" at volume 3 at pitch 1.2 at {_display}
+
+	set {_side} to getPlayerSide({_p})
+	if {_side} is set:
+		if {_side} = "blue":
+			set {_text} to "&9%{_p}%&f's Beacon"
+		else if {_side} = "red":
+			set {_text} to "&c%{_p}%&f's Beacon"
+	else:
+		set {_text} to "&b%{_p}%&f's Beacon"
+
+	spawn text display at location 2 above {_target}:
+		set {_name-display} to event-entity
+		set text of {_name-display} to {_text}
+		set billboard of {_name-display} to center
+		set line width of {_name-display} to 1000
+
+	loop {@lifetime} times:
+
+		loop getLivingEntities({_p}, {_target}, {_radius}, true):
+			set {_ent} to loop-value-2
+			if any:
+				onSameSide({_p}, {_ent}) = true
+				{_p} = {_ent}
+			then:
+				# each level of speed increases walkspeed by 20% of orig.
+				apply potion effect of speed 2 to loop-value-2 for 100 ticks:
+					hide icon
+
+		loop 30 times:
+			set {_v} to spherical vector radius {_radius}, yaw (loop-value-1) * 30 + (loop-value-2), pitch 0
+			set {_draw-l} to {_target} ~ {_v}
+			draw 1 rgb(135, 206, 235) dust particle of size 1.5 that transitions to rgb(65, 100, 150) at {_draw-l}
+			chance of 25%:
+				draw 1 electric spark particle with offset vector(0.5, 0.5, 0.5) with particle speed 0.25 at {_draw-l}
+
+		set {_vert-offset} to 1 + 0.5 * sin(3 * loop-value)
+		set {_temp-l} to location {_vert-offset} above {_target}
+		set yaw of {_temp-l} to loop-value * 3
+		teleport {_display} to {_temp-l}
+
+		draw 1 enchanting particle with offset vector(1, 1, 1) with particle speed 0.1 at {_temp-l}
+		chance of 25%:
+			draw 1 white potion effect particle with offset vector(1, 1, 1) with particle speed 0.1 at {_temp-l}
+		chance of 25%:
+			draw 1 firework particle with offset vector(1, 1, 1) with particle speed 0.1 at {_temp-l}
+
+		if mod(loop-counter, 40) = 0:
+			play sound "block.beacon.ambient" at volume 2 at pitch 1.2 at {_target}
+
+		wait 1 tick
+
+	play sound "block.beacon.deactivate" at volume 2 at pitch 1.2 at {_target}
+	play sound "entity.generic.explode" at volume 2 at pitch 1.2 at {_target}
+	play sound "block.glass.break" at volume 2 at pitch 0.8 at {_target}
+
+	draw 1 flash at {_display}
+	draw 1 explosion at {_display}
+	draw 10 glass block particle with offset vector(1, 1, 1) at {_display}
+
+	kill {_display}
+	kill {_name-display}
+
+	delete {-enchanting-table::%{_p}%}

@@ -1,0 +1,162 @@
+options:
+    blueBorder: light blue stained glass pane named "&9"
+    greenBorder: green stained glass pane named "&2"
+    purpleBorder: purple stained glass pane named "&5"
+    orangeBorder: orange stained glass pane named "&6"
+
+    exit: barrier named "&c&lEXIT"
+    back: arrow named "&f&lBACK"
+    fragments: prismarine crystals named "&b&lFRAGMENTS"
+
+    buy-powers: bundle named "&e&lBUY POWERS" with item flag hide additional tooltip
+    no-powers: oak sign named "&fYou have no other powers to equip of this rarity!" with lore "&e▌ Click to buy powers."
+
+    uncommon: &a&lUNCOMMON
+    rare: &9&lRARE
+    epic: &5&lEPIC
+    legendary: &6&lLEGENDARY
+
+function powerSelectorGui(p: player, returned: boolean = false):
+
+    if {-selection-in-progress::%getLobby({_p})%} = true:
+        set gamemode of {_p} to adventure
+
+    if {_returned} = false:
+        play sound "block.trial_spawner.spawn_item_begin" at volume 3 at pitch 1 to {_p}
+        play sound "item.book.page_turn" at volume 3 at pitch 1.2 to {_p}
+    #else:
+        #play sound "block.trial_spawner.close_shutter" at volume 3 at pitch 1 to {_p}
+
+    set {_gui} to chest inventory with 3 rows named "&9&lSELECT YOUR POWERS"
+    set slots (integers between 0 and 8, integers between 18 and 26) of {_gui} to {@blueBorder}
+
+    # placeholder powers
+    #set slot 11 of {_gui} to random element of getPowersOfRarity("uncommon")
+    #set slot 12 of {_gui} to random element of getPowersOfRarity("uncommon")
+    #set slot 13 of {_gui} to random element of getPowersOfRarity("rare")
+    #set slot 14 of {_gui} to random element of getPowersOfRarity("rare")
+    #set slot 15 of {_gui} to random element of getPowersOfRarity("epic")
+
+    set slot 3 of {_gui} to {@exit}
+
+    set slot 4 of {_gui} to {@fragments}
+    set lore of slot 4 of {_gui} to "&7» &f%{fragments::%{_p}%} ? 0%"
+ 
+    set slot 5 of {_gui} to {@buy-powers}
+
+    open {_gui} to {_p}
+    set {-power-selector-gui::%{_p}%} to {_gui}
+
+    loop integers between 1 and 5:
+        if loop-value is between 1 and 2:
+            set {_power} to {powers-selected::%{_p}%::uncommon::%loop-value%}
+        else if loop-value is between 3 and 4:
+            set {_power} to {powers-selected::%{_p}%::rare::%-2 + loop-value%}
+        else if loop-value = 5:
+            set {_power} to {powers-selected::%{_p}%::epic::1}
+        set slot loop-value + 10 of {_gui} to {powerAttributes::%{_power}%::stack-size} of getPower({_power})
+        play sound "ui.loom.select_pattern" at volume 3 at pitch 2 to {_p}
+        wait 2 ticks
+
+function powerSelectorPickPowerGui(p: player, rarity: text, index: number):
+
+    play sound "block.trial_spawner.close_shutter" at volume 3 at pitch 1 to {_p}
+
+    set {-power-selector-gui-index::%{_p}%} to {_index}
+    set {-power-selector-gui-rarity::%{_p}%} to {_rarity}
+
+    if {_rarity} = "uncommon":
+        #set {_header} to "{@uncommon} POWERS"
+        set {_header} to "&2&lUNCOMMON POWERS"
+        set {_border} to {@greenBorder}
+
+    else if {_rarity} = "rare":
+        set {_header} to "{@rare} POWERS"
+        set {_border} to {@blueBorder}
+
+    else if {_rarity} = "epic":
+        set {_header} to "{@epic} POWERS"
+        set {_border} to {@purpleBorder}
+    
+    else if {_rarity} = "legendary":
+        set {_header} to "{@legendary} POWERS"
+        set {_border} to {@orangeBorder}
+    
+    set {_powers::*} to (indices of {powers-owned::%{_p}%::%{_rarity}%::*}) where [{powers-selected::%{_p}%::%{_rarity}%::*} does not contain input]
+    if size of {_powers::*} > 0:
+        set {_num-rows} to 2 + ceil((size of {_powers::*}) / 9)
+    else:
+        set {_num-rows} to 3
+
+
+    set {_gui} to chest inventory with {_num-rows} rows named {_header}
+
+    set slots (integers between 0 and 8, integers between ({_num-rows} - 1) * 9 and ({_num-rows} - 1) * 9 + 10) of {_gui} to {_border}
+    set slot 3 of {_gui} to {@exit}
+    set slot 4 of {_gui} to {@back}
+    set slot 5 of {_gui} to {@buy-powers}
+
+    if size of {_powers::*} = 0:
+        set slot 9 of {_gui} to {@no-powers}
+
+    open {_gui} to {_p}
+    set {-power-selector-pick-power-gui::%{_p}%} to {_gui}
+    
+    loop {_powers::*}:
+        set slot 8 + loop-counter of {_gui} to getPower(loop-value)
+        play sound "ui.loom.select_pattern" at volume 3 at pitch 2 to {_p}
+        wait 2 ticks
+
+
+on inventory click:
+    if event-inventory = {-power-selector-gui::%player%}:
+        cancel event
+
+        if event-slot = {@exit}:
+            close inventory of player
+
+        else if event-slot = {@buy-powers}:
+            execute player command "buy-powers"
+
+        else if event-slot's index is between 11 and 15:
+            if event-slot's index is between 11 and 12:
+                set {_rarity} to "uncommon"
+                set {_idx} to event-slot's index - 10
+            else if event-slot's index is between 13 and 14:
+                set {_rarity} to "rare"
+                set {_idx} to event-slot's index - 12
+            else if event-slot's index = 15:
+                set {_rarity} to "epic"
+                set {_idx} to event-slot's index - 14
+
+            powerSelectorPickPowerGui(player, {_rarity}, {_idx})
+
+
+    else if event-inventory = {-power-selector-pick-power-gui::%player%}:
+        cancel event
+        if event-slot = {@back}:
+            powerSelectorGui(player, true)
+        else if event-slot = {@no-powers}:
+            execute player command "buy-powers"
+
+        else if isPower(event-slot) = true:
+            set {_idx} to {-power-selector-gui-index::%player%}
+            set {_rarity} to {-power-selector-gui-rarity::%player%}
+            set {powers-selected::%player%::%{_rarity}%::%{_idx}%} to unformat(event-slot's name)
+            play sound "block.trial_spawner.spawn_item" at volume 3 at pitch 0.8 to player
+            play sound "ui.loom.take_result" at volume 3 at pitch 1.2 to player
+            powerSelectorGui(player, true)
+
+on inventory close:
+    wait 1 tick
+    if all:
+        event-inventory = {-power-selector-gui::%player%} or {-power-selector-pick-power-gui::%player%}
+        top inventory of player != {-power-selector-gui::%player%} or {-power-selector-pick-power-gui::%player%}
+        {-selection-in-progress::%getLobby(player)%} = true
+    then:
+        set gamemode of player to spectator
+
+command /select-powers:
+    permission: select-powers
+    trigger:
+        powerSelectorGui(player)

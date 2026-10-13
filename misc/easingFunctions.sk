@@ -1,0 +1,53 @@
+function easeOutBounce(x: number) :: number:
+    set {_n1} to 7.5625
+    set {_d1} to 2.75
+
+    if {_x} < (1 / {_d1}):
+        return {_n1} * {_x} * {_x}
+    else if {_x} < (2 / {_d1}):
+        set {_x2} to {_x} - (1.5 / {_d1})
+        return {_n1} * {_x2} * {_x2} + 0.75
+    else if {_x} < (2.5 / {_d1}):
+        set {_x2} to {_x} - (2.25 / {_d1})
+        return {_n1} * {_x2} * {_x2} + 0.9375
+    else:
+        set {_x2} to {_x} - (2.625 / {_d1})
+        return {_n1} * {_x2} * {_x2} + 0.984375
+
+function easeInOutBounce(x: number) :: number:
+    if {_x} < 0.5:
+        return (1 - easeOutBounce(1 - 2 * {_x})) / 2
+    else:
+        return (1 + easeOutBounce(2 * {_x} - 1)) / 2
+
+# shikin
+function easeInExpo(x: number) :: number:
+    if {_x} = 0:
+        return 0
+    set {_n} to (10 * {_x}) - 10
+    return 2^{_n}
+
+function easeInOutCubic(x: number) :: number:
+    # x is between 0 and 1
+    if {_x} < 0.5:
+        return 4*{_x}^3
+    else:
+        set {_n} to -2*{_x}
+        set {_n} to ({_n}+2)^3
+        return 1 - ({_n} / 2)
+
+function easeInBack(x: number, c1: number = 1.70158) :: number:
+    # x is between 0 and 1
+    #set {_c1} to 1.70158
+    set {_c3} to {_c1} + 1
+    return ({_c3}*({_x}^3)) - ({_c1}*({_x}^2))
+
+function easeOutQuint(x: number) :: number:
+    return 1 - (1 - {_x})^5
+
+function easeInOutQuad(x: number) :: number:
+    #return x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2;
+    if {_x} < 0.5:
+        return 2 * {_x} * {_x}
+    else:
+        return 1 - ((-2 * {_x} + 2) ^ 2) / 2

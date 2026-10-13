@@ -1,0 +1,212 @@
+on script load:
+
+    # CANNON
+    set {structure::cannonBarrel::1} to location(13.5, 66.5, -11.5, "game")
+    set {structure::cannonBarrel::2} to location(11.5, 68.5, -7.5, "game")
+    set {structure::cannonBarrel::centre} to location(12.5, 67.5, -11.5, "game")
+    
+    set {structure::cannonWheels::1} to location(21.5, 65.5, -20.5, "game")
+    set {structure::cannonWheels::2} to location(17.5, 70.5, -16.5, "game")
+    set {structure::cannonWheels::centre} to location(19.5, 66.5, -18.5, "game")
+
+    # MISSILE
+    set {structure::missile::1} to location(-8.5, 65.5, -27.5, "game")
+    set {structure::missile::2} to location(-10.5, 67.5, -22.5, "game")
+    set {structure::missile::centre} to location(-9.5, 66.5, -25.5, "game")
+
+    # DAVE 9000
+    set {structure::dave-9000::1} to location(-20.5, 66.5, -8.5, "game")
+    set {structure::dave-9000::2} to location(-16.5, 74.5, -11.5, "game")
+    set {structure::dave-9000::centre} to location(-18.5, 66.5, -10.5, "game")
+
+    # DAVE 9000 TORSO
+    set {structure::dave-9000-torso::1} to location(-21.5, 65.5, 0.5, "game")
+    set {structure::dave-9000-torso::2} to location(-17.5, 74.5, -2.5, "game")
+    set {structure::dave-9000-torso::centre} to location(-19.5, 68.5, -1.5, "game")
+
+    # DAVE 9000 LEFT LEG
+    set {structure::dave-9000-left-leg::1} to location(-21.5, 65.5, 8.5, "game")
+    set {structure::dave-9000-left-leg::2} to location(-17.5, 74.5, 5.5, "game")
+    set {structure::dave-9000-left-leg::centre} to location(-19.5, 68.5, 6.5, "game")
+
+    # DAVE 9000 RIGHT LEG
+    set {structure::dave-9000-right-leg::1} to location(-20.5, 65.5, 15.5, "game")
+    set {structure::dave-9000-right-leg::2} to location(-16.5, 74.5, 12.5, "game")
+    set {structure::dave-9000-right-leg::centre} to location(-18.5, 68.5, 13.5, "game")
+
+    # FLYING MACHINE
+    set {structure::flying-machine::1} to location(24.5, 65.5, 15.5, "game")
+    set {structure::flying-machine::2} to location(20.5, 70.5, 12.5, "game")
+    set {structure::flying-machine::centre} to location(22.5, 66.5, 14.5, "game")
+
+    # FLYING MACHINE BODY
+    set {structure::flying-machine-body::1} to location(24.5, 65.5, 7.5, "game")
+    set {structure::flying-machine-body::2} to location(20.5, 70.5, 4.5, "game")
+    set {structure::flying-machine-body::centre} to location(22.5, 66.5, 6.5, "game")
+
+    # FLYING MACHINE PROPELLER
+    set {structure::flying-machine-propeller::1} to location(17.5, 65.5, 7.5, "game")
+    set {structure::flying-machine-propeller::2} to location(13.5, 70.5, 4.5, "game")
+    #set {structure::flying-machine-propeller::centre} to location(15.5, 70.5, 5.5, "game")
+    set {structure::flying-machine-propeller::centre} to location(15.5, 66.5, 6.5, "game")
+
+    # STALAGMITES (is this overkill?)
+
+    set {structure::stalagmite1::1} to location(12.5, 65.5, 23.5, "game")
+    set {structure::stalagmite1::2} to location(12.5, 65.5, 23.5, "game")
+    set {structure::stalagmite1::centre} to location(12.5, 65.5, 23.5, "game")
+    
+    set {structure::stalagmite2::1} to location(12.5, 65.5, 22.5, "game")
+    set {structure::stalagmite2::2} to location(12.5, 66.5, 22.5, "game")
+    set {structure::stalagmite2::centre} to location(12.5, 65.5, 22.5, "game")
+    
+    set {structure::stalagmite3::1} to location(12.5, 65.5, 21.5, "game")
+    set {structure::stalagmite3::2} to location(12.5, 67.5, 21.5, "game")
+    set {structure::stalagmite3::centre} to location(12.5, 65.5, 21.5, "game")
+    
+    set {structure::stalagmite4::1} to location(12.5, 65.5, 20.5, "game")
+    set {structure::stalagmite4::2} to location(12.5, 68.5, 20.5, "game")
+    set {structure::stalagmite4::centre} to location(12.5, 65.5, 20.5, "game")
+    
+    set {structure::stalagmite5::1} to location(12.5, 65.5, 19.5, "game")
+    set {structure::stalagmite5::2} to location(12.5, 69.5, 19.5, "game")
+    set {structure::stalagmite5::centre} to location(12.5, 65.5, 19.5, "game")
+    
+    set {structure::stalagmite6::1} to location(12.5, 65.5, 18.5, "game")
+    set {structure::stalagmite6::2} to location(12.5, 70.5, 18.5, "game")
+    set {structure::stalagmite6::centre} to location(12.5, 65.5, 18.5, "game")
+
+    # PIANO
+
+    set {structure::piano::1} to location(7.5, 65.5, -21.5, "game")
+    set {structure::piano::2} to location(3.5, 68.5, -17.5, "game")
+    set {structure::piano::centre} to location(5.5, 66.5, -19.5, "game")
+
+    # TENNIS CANNON
+
+    set {structure::tennis-cannon::1} to location(-12.5, 65.5, -11.5, "game")
+    set {structure::tennis-cannon::2} to location(-14.5, 67.5, -5.5, "game")
+    set {structure::tennis-cannon::centre} to location(-13.5, 66.5, -10.5, "game")
+
+    set {structure::tennis-cannon-seat::1} to location(-23.5, 65.5, -2.5, "game")
+    set {structure::tennis-cannon-seat::2} to location(-25.5, 67.5, -8.5, "game")
+    set {structure::tennis-cannon-seat::centre} to location(-24.5, 66.5, -7.5, "game")
+
+    set {structure::tennis-cannon-barrel::1} to location(-24.5, 65.5, 4.5, "game")
+    set {structure::tennis-cannon-barrel::2} to location(-26.5, 67.5, -1.5, "game")
+    set {structure::tennis-cannon-barrel::centre} to location(-25.5, 66.5, -0.5, "game")
+
+    # GIANT MUSHROOM
+
+    #set {structure::giant-mushroom::1} to location(-2.5, 65.5, 30.5, "game")
+    #set {structure::giant-mushroom::2} to location(-8.5, 70.5, 24.5, "game")
+    #set {structure::giant-mushroom::centre} to location(-5.5, 65.5, 27.5, "game")
+
+    set {structure::giant-mushroom::1} to location(-28.5, 65.5, 50.5, "game")
+    set {structure::giant-mushroom::2} to location(-25.5, 71.5, 46.5, "game")
+    set {structure::giant-mushroom::centre} to location(-26.5, 65.5, 48.5, "game")
+
+    # UFO
+    
+    set {structure::ufo::1} to location(27.5, 67.5, 44.5, "game")
+    set {structure::ufo::2} to location(33.5, 63.5, 38.5, "game")
+    set {structure::ufo::centre} to location(30.5, 66.5, 41.5, "game")
+
+    # NETHER PORTAL
+    set {structure::nether-portal::1} to location(5.5, 65.5, 29.5, "game")
+    set {structure::nether-portal::2} to location(2.5, 69.5, 29.5, "game")
+    set {structure::nether-portal::centre} to location(3.5, 65.5, 29.5, "game")
+
+    # HOOK
+    set {structure::hook::1} to location(21.5, 65.5, 19.5, "game")
+    set {structure::hook::2} to location(17.5, 67.5, 23.5, "game")
+    set {structure::hook::centre} to location(19.5, 67.5, 21.5, "game")
+
+    # METEOR
+    set {structure::meteor::1} to location(-45.5, 70.5, -0.5, "game")
+    set {structure::meteor::2} to location(-51.5, 76.5, -6.5, "game")
+    set {structure::meteor::centre} to location(-48.5, 73.5, -3.5, "game")
+
+    # CAR & TRAFFIC LIGHTS
+    set {structure::car::1} to location(-7.5, 65.5, 8.5, "game")
+    set {structure::car::2} to location(-11.5, 67.5, 15.5, "game")
+    set {structure::car::centre} to location(-9.5, 65.5, 11.5, "game")
+
+    set {structure::traffic-lights::1} to location(-21.5, 65.5, -16.5, "game")
+    set {structure::traffic-lights::2} to location(-17.5, 73.5, -18.5, "game")
+    set {structure::traffic-lights::centre} to location(-21.5, 65.5, -17.5, "game")
+
+    # WIND VANE
+
+    set {structure::wind-vane::1} to location(17.5, 65.5, -13.5, "game")
+    set {structure::wind-vane::2} to location(21.5, 73.5, -9.5, "game")
+    set {structure::wind-vane::centre} to location(19.5, 65.5, -11.5, "game")
+    
+    set {structure::wind-vane-propeller::1} to location(18.5, 65.5, -3.5, "game")
+    set {structure::wind-vane-propeller::2} to location(14.5, 69.5, -3.5, "game")
+    set {structure::wind-vane-propeller::centre} to location(16.5, 67.5, -3.5, "game")
+
+    # STEAMROLLER
+    set {structure::steamroller::1} to location(-42.5, 65.5, 47.5, "game")
+    set {structure::steamroller::2} to location(-36.5, 71.5, 56.5, "game")
+    set {structure::steamroller::centre} to location(-39.5, 67.5, 54.5, "game")
+
+    set {structure::steamroller-drum::1} to location(-42.5, 65.5, 42.5, "game")
+    set {structure::steamroller-drum::2} to location(-38.5, 67.5, 40.5, "game")
+    set {structure::steamroller-drum::centre} to location(-40.5, 66.5, 41.5, "game")
+
+    set {structure::steamroller-left-wheel::1} to location(-48.5, 65.5, 41.5, "game")
+    set {structure::steamroller-left-wheel::2} to location(-47.5, 67.5, 39.5, "game")
+    set {structure::steamroller-left-wheel::centre} to location(-48.5, 66.5, 40.5, "game")
+
+    set {structure::steamroller-right-wheel::1} to location(-50.5, 65.5, 41.5, "game")
+    set {structure::steamroller-right-wheel::2} to location(-51.5, 67.5, 39.5, "game")
+    set {structure::steamroller-right-wheel::centre} to location(-50.5, 66.5, 40.5, "game")
+
+    #set {structure::steamroller::1} to location(-52.5, 65.5, 59.5, "game")
+    #set {structure::steamroller::2} to location(-56.5, 70.5, 49.5, "game")
+    #set {structure::steamroller::centre} to location(-54.5, 67.5, 56.5, "game")
+
+    # ROCKET
+    set {structure::rocket::1} to location(-14.5, 65.5, -25.5, "game")
+    set {structure::rocket::2} to location(-16.5, 67.5, -18.5, "game")
+    set {structure::rocket::centre} to location(-15.5, 66.5, -22.5, "game")
+
+    # BLENDER
+    set {structure::blender::1} to location(-24.5, 65.5, 14.5, "game")
+    set {structure::blender::2} to location(-26.5, 67.5, 12.5, "game")
+    set {structure::blender::centre} to location(-25.5, 66.5, 13.5, "game")
+
+    # HOT AIR BALLOON
+    set {structure::hot-air-balloon::1} to location(-19.5, 66.5, 20.5, "game")
+    set {structure::hot-air-balloon::2} to location(-23.5, 76.5, 24.5, "game")
+    set {structure::hot-air-balloon::centre} to location(-21.5, 67.5, 22.5, "game")
+
+
+    # HOT AIR BALLOON BOTTOM HALF
+    #set {structure::hot-air-balloon-bottom::1} to location(-18.5, 65.5, 19.5, "game")
+    #set {structure::hot-air-balloon-bottom::2} to location(-24.5, 71.5, 25.5, "game")
+    #set {structure::hot-air-balloon-bottom::centre} to location(-21.5, 69.5, 22.5, "game")
+ 
+    # HOT AIR BALLOON TOP HALF
+    #set {structure::hot-air-balloon-top::1} to location(-19.5, 66.5, 20.5, "game")
+    #set {structure::hot-air-balloon-top::2} to location(-23.5, 76.5, 24.5, "game")
+    #set {structure::hot-air-balloon-top::centre} to location(-21.5, 69.5, 22.5, "game")
+
+    # MINI BLIMP
+    set {structure::mini-blimp::1} to location(-68.5, 70.5, 53.5, "game")
+    set {structure::mini-blimp::2} to location(-66.5, 67.5, 51.5, "game")
+    set {structure::mini-blimp::centre} to location(-67.5, 68.5, 54.5, "game")
+
+    # DRONE
+    set {structure::drone::1} to location(-73.5, 67.5, 54.5, "game")
+    set {structure::drone::2} to location(-77.5, 68.5, 50.5, "game")
+    set {structure::drone::centre} to location(-75.5, 68.5, 52.5, "game")
+
+command /b-b:
+    permission: op
+    trigger:
+        set {_target} to target block
+        set {_t} to text component from "location(%x-coord of {_target}%, %y-coord of {_target}%, %z-coord of {_target}%, ""lobbies"")"
+        add click event to copy "location(%x-coord of {_target}%, %y-coord of {_target}%, %z-coord of {_target}%, ""game"")" to clipboard to {_t}
+        broadcast component {_t}

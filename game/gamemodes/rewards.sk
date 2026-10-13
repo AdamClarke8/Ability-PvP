@@ -1,0 +1,67 @@
+options:
+    victory-prefix: &e&lVICTORY &7»
+    loss-prefix: &c&lLOSS &7»
+    reward-for-kills-prefix: &a&lREWARD FOR KILLS &7»
+    reward-for-assists-prefix: &e&lREWARD FOR ASSISTS &7»
+    reward-for-points-prefix: &a&lREWARD FOR POINTS &7»
+
+
+on script load:
+    set {winner-fragments::free-for-all} to 25
+    set {loser-fragments::free-for-all} to 10
+    set {fragments-per-kill::free-for-all} to 5
+    set {fragments-per-kill::free-for-all} to 5
+    set {fragments-per-assist::free-for-all} to 2
+
+    set {winner-fragments::king-of-the-hill} to 25
+    set {loser-fragments::king-of-the-hill} to 10
+    #set {fragments-per-kill::king-of-the-hill} to 5
+    #set {fragments-per-assist::king-of-the-hill} to 2
+    set {fragments-per-point::king-of-the-hill} to 0.01
+
+    set {winner-fragments::team-deathmatch} to 25
+    set {loser-fragments::team-deathmatch} to 10
+    set {fragments-per-kill::team-deathmatch} to 5
+    set {fragments-per-assist::team-deathmatch} to 2
+
+function awardWinners(winners: players, gamemode: text):
+    set {_fragments} to {winner-fragments::%{_gamemode}%}
+    loop {_winners::*}:
+        add {_fragments} to {fragments::%loop-value%}
+        sidebar(loop-value, "fragments")
+        send "{@victory-prefix} &b+%{_fragments}% Fragments" to loop-value
+
+function awardLosers(losers: players, gamemode: text):
+    set {_fragments} to {loser-fragments::%{_gamemode}%}
+    loop {_losers::*}:
+        add {_fragmnets} to {fragments::%loop-value%}
+        sidebar(loop-value, "fragments")
+        send "{@loss-prefix} &b+%{_fragments}% Fragments" to loop-value
+
+function awardForKills(lobby: text, gamemode: text):
+    set {_fragments-per} to {fragments-per-kill::%{_gamemode}%}
+
+    loop getPlayers({_lobby}):
+        set {_fragments} to ceil({-kills::%{_lobby}%::%{_gamemode}%::%loop-value%} * {_fragments-per}) ? 0
+        add {_fragments} to {fragments::%loop-value%}
+        sidebar(loop-value, "fragments")
+        send "{@reward-for-kills-prefix} &b+%{_fragments}% Fragments" to loop-value
+
+function awardForAssists(lobby: text, gamemode: text):
+    set {_fragments-per} to {fragments-per-assist::%{_gamemode}%}
+
+    loop getPlayers({_lobby}):
+        set {_fragments} to ceil({-assists::%{_lobby}%::%{_gamemode}%::%loop-value%} * {_fragments-per}) ? 0
+        add {_fragments} to {fragments::%loop-value%}
+        sidebar(loop-value, "fragments")
+        send "{@reward-for-assists-prefix} &b+%{_fragments}% Fragments" to loop-value
+
+function awardForPoints(lobby: text, gamemode: text):
+    set {_fragments-per} to {fragments-per-point::%{_gamemode}%}
+
+    loop getPlayers({_lobby}):
+        set {_fragments} to ceil({-points::%{_lobby}%::%{_gamemode}%::%loop-value%} * {_fragments-per}) ? 0
+        add {_fragments} to {fragments::%loop-value%}
+        sidebar(loop-value, "fragments")
+        send "{@reward-for-points-prefix} &b+%{_fragments}% Fragments" to loop-value
+

@@ -1,0 +1,65 @@
+options:
+    speed: 1
+
+function burger(p: player):
+    set {_l} to location 0.8 above location 1 infront of {_p}
+
+    spawn item display at location 1.3 above {_l}:
+        set {_display} to event-entity
+        set item of {_display} to {heads::burger}
+        set display scale of {_display} to vector(1.5, 1.5, 1.5)
+        set display translation of {_display} to vector(0, 0, 0)
+        set teleport duration of {_display} to 1 ticks
+        set interpolation duration of {_display} to 1 ticks
+
+    set {_tempLoc} to location of {_display}
+
+    set {_vel-vert} to 0.25
+    set {_vel-hori} to {@speed}
+    set {_acceleration} to 0.05
+
+    set {_angle} to 24 * (random element of 1 and -1)
+
+    #play sound "entity.egg.throw" at volume 3 at pitch 1.2 at {_l}
+    #play sound "entity.shulker.shoot" at volume 2 at pitch 1.2 at {_l}
+    play sound "entity.breeze.shoot" at volume 1.5 at pitch 1.5 at {_l}
+    play sound "entity.blaze.shoot" at volume 1.5 at pitch 1.5 at {_l}
+
+    while {_display} is alive:
+
+        if loop-counter >= 70:
+            exit loop
+
+        else if {except::*} does not contain block at {_tempLoc}:
+            exit loop
+
+        else:
+            set {_targets::*} to getLivingEntities({_p}, location of {_display}, 2.5) where [input != {_p}]
+            {_targets::*} is set:
+                exit loop
+
+        wait 1 tick
+
+        set {_vel-vert} to {_vel-vert} - {_acceleration}
+        set {_tempLoc} to location {_vel-vert} above location {_vel-hori} infront {_tempLoc}
+
+        set interpolation delay of {_display} to 0 ticks
+
+        teleport {_display} to {_tempLoc}
+        rotate {_display} around y-axis by {_angle} degrees
+        rotate {_display} around x-axis by {_angle} / 2 degrees
+
+        if mod(loop-counter, 2) = 0:
+            draw 1 birch planks block particle at {_display}
+            draw 1 fire block particle at {_display}
+
+        play sound "entity.phantom.flap" at volume 2 at pitch 0.8 at {_display}
+
+    loop {_targets::*}:
+        makeDamage({_p}, loop-value, {powerAttributes::burger::damage}, "burger")
+        play sound "entity.player.burp" at volume 2 at pitch 1 at loop-value
+
+    kill {_display}
+    draw 1 explosion particle at {_tempLoc}
+    play sound "entity.shulker_bullet.hit" at volume 3 at pitch 1.2 at {_tempLoc}
+    play sound "entity.generic.eat" at volume 2 at pitch 1 at {_tempLoc}

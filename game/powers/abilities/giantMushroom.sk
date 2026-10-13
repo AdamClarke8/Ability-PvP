@@ -1,0 +1,115 @@
+options:
+    radius: 5
+
+function giantMushroom(p: player):
+    
+    set {-power-active::%{_p}%::giant-mushroom} to true
+
+    set {_l} to getTargetLocation({_p}, 64)
+
+    set yaw of {_l} to 0
+    set {_displays::*} to buildingToDisplay({structure::giant-mushroom::1}, {structure::giant-mushroom::2}, {structure::giant-mushroom::centre}, 1, {_l})
+    set {_root} to {_displays::1}
+
+
+    loop {_displays::*}:
+        set sky light override of loop-value to 15
+        set view range of loop-value to 0
+        set {_orig-translation::%loop-counter%} to display translation of loop-value
+
+    set {_mushroom-orig-scale} to 2
+
+    spawn block display at location 1 above {_l}:
+        set {_mushroom} to event-entity
+        set block data of {_mushroom} to brown mushroom
+        set display scale of {_mushroom} to vector({_mushroom-orig-scale}, {_mushroom-orig-scale}, {_mushroom-orig-scale})
+        set display translation of {_mushroom} to vector({_mushroom-orig-scale} * -0.5, {_mushroom-orig-scale} * -0.5, {_mushroom-orig-scale} * -0.5)
+        set shadow radius of {_mushroom} to 4
+        set shadow strength of {_mushroom} to 1
+
+    #play sound "entity.breeze.inhale" at volume 3 at pitch 1.5 at {_l}
+    play sound "entity.breeze.inhale" at volume 3 at pitch 0.8 at {_l}
+
+    loop 15 times:
+        set {_mushroom-scale} to {_mushroom-orig-scale} * sin(loop-value * 180 / 15) ^ 0.5
+        set display scale of {_mushroom} to vector({_mushroom-scale}, {_mushroom-scale}, {_mushroom-scale})
+        set display translation of {_mushroom} to vector({_mushroom-scale} * -0.5, {_mushroom-orig-scale} * -0.5, {_mushroom-scale} * -0.5)
+        loop 24 times:
+            set {_v} to spherical vector radius {@radius}, yaw (loop-value-1) * 24 + (loop-value-2), pitch 0
+            set {_draw-l} to {_l} ~ {_v}
+            if mod(loop-value-2, 2) = 0:
+                draw 1 (block data of block 1 below {_draw-l}) block particle at {_draw-l}
+            if mod(loop-value-2 + floor((loop-value-1) / 5), 18) = 0:
+                groundShake(block 1 below {_draw-l})
+        throwOutFallingBlock(block 1 below {_draw-l}, "up", 0.5)
+        play sound "block.grass.break" at volume 2 at pitch 1.5 + loop-value / 30 at {_l}
+        play sound "block.composter.fill" at volume 2 at pitch 1.5 + loop-value / 30 at {_l}
+        wait 1 tick
+
+    fallingDebris({_l}, 4, 1)
+
+    play sound "entity.firework_rocket.blast" at volume 3 at pitch 0.8 at {_l}
+    play sound "entity.firework_rocket.launch" at volume 3 at pitch 0.75 at {_l}
+
+    create explosion of force 2 at {_l}
+
+    loop getLivingEntities({_p}, {_l}, {@radius}, false, false):
+        if loop-value != {_p}:
+            makeDamage({_p}, loop-value, {powerAttributes::giant-mushroom::damage}, "giant-mushroom")
+        play sound "enchant.thorns.hit" at volume 2.5 at pitch 1.2 at loop-value
+        play sound "entity.player.attack.knockback" at volume 3 at pitch 1.2 at loop-value
+
+    loop getLivingEntities({_p}, {_l}, {@radius}, true, false):
+        applyPush(loop-value, (normalized vector from {_l} to loop-value) * 0.5 + vector(0, 1.5, 0), {_p}, "giant-mushroom")
+
+    delete {-power-active::%{_p}%::giant-mushroom}
+
+
+    set {_yaw} to 0
+
+    set {_orig-scale} to 1
+
+    loop 30 times:
+        set {_scale} to {_orig-scale} * sin(90 * loop-value / 30) ^ 1
+        loop {_displays::*}:
+            set display scale of loop-value-2 to vector({_scale}, {_scale}, {_scale})
+            set display translation of loop-value-2 to {_orig-translation::%loop-counter-2%} * {_scale}
+        teleport {_root} to location -0.5 + (1 - easeOutBounce(loop-value / 30)) * 5 below {_l}
+        #set yaw of {_root} to (30 - loop-value) * (360 / (0.5 * 29 * 30))
+        set {_yaw} to 360 * cos(90 * loop-value / 30) ^ 4
+        set {_pitch} to -30 * cos(90 * loop-value / 30) ^ 1.5
+        rotate({_root}, {_yaw}, {_pitch}, false)
+        #play sound "block.bamboo.place" at volume 2 at pitch 2 - 1 * sin(loop-value * 180 / 30) ^ 0.75 at {_l}
+        draw 1 large smoke particle with offset vector(1, 1, 1) with particle speed 0.1 at {_l}
+        wait 1 tick
+        if loop-value = 1:
+            loop {_displays::*}:
+                set view range of loop-value-2 to 128
+
+    draw 15 happy villager particle with offset vector(2, 2, 2) at {_l}
+    play sound "block.composter.empty" at volume 3 at pitch 1 at {_l}
+    play sound "entity.experience_orb.pickup" at volume 3 at pitch 1.2 at {_l}
+    play sound "entity.villager.work_fletcher" at volume 2 at pitch 1.2 at {_l}
+    wait 30 ticks
+
+    kill {_mushroom}
+
+    loop {_displays::*}:
+
+        set view range of loop-value to 0
+
+        #mod(loop-counter, 2) = 0
+
+        set {_v} to display translation of loop-value
+        #rotate {_v} around y-axis by ({_l}'s yaw) * -1 degrees
+        set {_draw-l} to location of {_root} ~ {_v}
+        draw 1 (block data of loop-value) block particle with offset vector(0.5, 0.5, 0.5) at {_draw-l}
+
+
+        #if loop-counter < 8:
+        play sound "block.wood.break" at volume 1 at pitch 1 at loop-value
+        wait 1 tick
+
+    play sound "block.wood.break" at volume 1.5 at pitch 1 at location 4 above {_l}
+
+    kill {_displays::*}

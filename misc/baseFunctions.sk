@@ -1,0 +1,680 @@
+function toVector(l: location) :: vector:
+	set {_x} to x-coordinate of {_l}
+	set {_y} to y-coordinate of {_l}
+	set {_z} to z-coordinate of {_l}
+	return vector({_x}, {_y}, {_z})
+
+function rotate(e: entity, yaw: number, pitch: number, addTo: boolean = true):
+	set {_l} to {_e}'s location
+	if {_addTo} = true:
+		add {_yaw} to {_l}'s yaw
+		add {_pitch} to {_l}'s pitch
+	else:
+		set {_l}'s yaw to {_yaw}
+		set {_l}'s pitch to {_pitch}
+	teleport {_e} to {_l}
+
+function popFirework(l: location, shades: colours):
+	launch large ball firework coloured {_shades::*} at {_l}
+	set {_firework} to launched firework
+	add nbt compound of "{LifeTime:0}" to nbt compound of {_firework}
+
+function visualDrop(l: location, i: item type):
+	set {_i}'s name to "VISUAL_ITEM %random integer between 1 and 999999%"
+	drop 1 of {_i} at {_l}
+	set {_e} to dropped item
+	wait 30 tick
+	kill {_e}
+
+function spiral(l: location, particle: text, quantity: number = 360, radius: number = 1.5, stepSize: number = 4):
+	loop {_quantity} times:
+		set {_v} to spherical vector radius {_radius}, yaw loop-value * (360 / {_quantity}), pitch 0
+		set {_l2} to (location loop-value / ({_quantity} / 2) above {_l}) ~ {_v}
+		{_particle} contains "block:":
+			set {_i} to last element of ({_particle} split at ":") parsed as item type
+			draw 1 {_i} block particle at {_l2}
+		else if {_particle} contains "item:":
+			set {_i} to last element of ({_particle} split at ":") parsed as item type
+			visualDrop({_l2}, {_i})
+		else:
+			set {_particleEffect} to {_particle} parsed as particle
+			{_particleEffect} is set:
+				draw 1 of {_particleEffect} with particle speed 0 at {_l2}
+		if mod(loop-value, {_stepSize}) = 0:
+			wait 1 tick
+
+function error(p: player, message: text):
+	{-error::%{_p}%} is not set
+	set {-error::%{_p}%} to true
+	send formatted {_message} to {_p}
+	play sound "entity.enderman.teleport" at volume 10 at pitch 0.8 to {_p}
+	wait 1 second
+	delete {-error::%{_p}%}
+
+function errorActionBar(p: player, message: text):
+	{-error-action-bar::%{_p}%} is not set
+	set {-error-action-bar::%{_p}%} to true
+	send action bar (formatted {_message}) to {_p}
+	play sound "entity.enderman.teleport" at volume 10 at pitch 0.8 to {_p}
+	wait 1 second
+	delete {-error-action-bar::%{_p}%}
+
+function applyPush(e: entity, v: vector, pusher: entity, cause: text = "none"):
+	#{-winding-up::%{_e}%::dave-9000} != true
+	while vehicle of {_e} is set:
+		set {_e} to vehicle of {_e}
+	{-is-flying-machine-seat::%{_e}%} != true
+	if {-is-dave-9000-stand::%{_e}%} = true:
+		set {_v} to {_v} * vector(0.75, 0.25, 0.75)
+	else if {_cause} = "cake-platform":
+		if {_e} = an armor stand:
+			set {_v} to {_v} * vector(1, 1.75, 1)
+	else if {_cause} = "ufo":
+		if {_e} = an armor stand:
+			set {_v} to {_v} * vector(1, 2, 1)
+
+	#set {_mannequin} to {-mannequin::%{_e}%}
+	#{_mannequin} is set:
+	#	push {_mannequin} {_v}
+	#else:
+	push {_e} {_v}
+	set {-last-pushed::%{_e}%::%{_pusher}%} to now
+	if {_cause} != "none":
+		set {-last-push-cause::%{_e}%} to {_cause}
+
+function getLastPushCause(e: entity) :: text:
+	return {-last-push-cause::%{_e}%}
+
+#function getLastPusher(e: entity) :: entity:
+#	return {-pushed-by::%{_e}%}
+
+function getMostRecentPusher(victim: player) :: entity:
+	loop all players and (all living entities where [input != a player]):
+		if {-last-pushed::%{_victim}%::%loop-entity%} is set:
+			add loop-entity to {_pushers::*}
+			set {_time} to time since {-last-pushed::%{_victim}%::%loop-entity%}
+			add {_time} to {_times::*}
+	set {_pushers-sorted::*} to sortArrayCompareAscending({_pushers::*}, {_times::*})
+	return {_pushers-sorted::1}
+
+function horizontalVector(e: entity) :: vector:
+	return normalized vector from yaw (yaw of {_e}) and pitch 0
+
+function getLivingEntities(p: player, l: location, radius: number, incl-same-team: boolean = false, incl-shulker-boxes: boolean = false) :: entities:
+	loop living entities in radius {_radius} of {_l} where [input is not an armor stand or a villager]:
+		if loop-value = a player:
+			if any:
+				gamemode of loop-value != survival or adventure
+				{-is-spectating::%loop-value%} = true
+			then:
+				continue
+			else if all:
+				{_p}'s groups contains "blue"
+				loop-value's groups contains "blue"
+				{_incl-same-team} = false
+			then:
+				continue
+			else if all:
+				{_p}'s groups contains "red"
+				loop-value's groups contains "red"
+				{_incl-same-team} = false
+			then:
+				continue
+			#if {-power-active::%loop-value%::vent} = true:
+			#	continue
+			if {-power-active::%loop-value%::drill} = true:
+				continue
+			if {-mannequin::%loop-value%} is set:
+				continue
+		else if loop-value is a mannequin:
+			set {_owner} to {-mannequin-owner::%loop-value%}
+			{_incl-same-team} = false
+			if any:
+				onSameSide({_p}, loop-value) = true
+				{_p} = {_owner}
+			then:
+				continue
+		if all:
+			{_incl-shulker-boxes} = false
+			{-trapped::%loop-value%::shulker-box} = true
+		then:
+			continue
+
+
+		#else if loop-value = a mannequin:
+		#	set {_owner} to {-mannequin-owner::%loop-value%}
+		#	if {_entities::*} contains {_owner}:
+		#		continue
+		#	add {_owner} to {_entities::*}
+		#	continue
+
+		else if loop-value = a mooshroom:
+			if {-owner::%loop-value%} = {_p}:
+				continue
+		else if {-is-pothole-zombie::%loop-value%} = true:
+			continue
+	
+		add loop-value to {_entities::*}
+
+	loop interactions in world of {_l}:
+		set {_interaction} to loop-value
+
+		{-is-dave-9000-interaction::%{_interaction}%} = true
+		interactionIsInRadius({_interaction}, {_l}, {_radius}) = true
+
+		set {_player} to {-dave-9000-interaction-player::%{_interaction}%}
+		{_entities::*} does not contain {_player}
+		add {_player} to {_entities::*}
+
+	return {_entities::*}
+
+function interactionIsInRadius(interaction: entity, l: location, radius: number) :: boolean:
+	set {_width} to interaction width of {_interaction}
+	set {_height} to interaction height of {_interaction}
+	set {_x} to x-coord of {_interaction}
+	set {_y} to (y-coord of {_interaction}) + {_height} / 2
+	set {_z} to z-coord of {_interaction}
+	#broadcast "%{_width}%, %{_height}%, %{_x}%, %{_y}%, %{_z}%, %{_radius}%"
+	if all:
+		(abs((x-coord of {_l}) - {_x}) - {_width} / 2) < {_radius}
+		(abs((z-coord of {_l}) - {_z}) - {_width} / 2) < {_radius}
+		(abs((y-coord of {_l}) - {_y}) - {_height} / 2) < {_radius}
+	then:
+		#broadcast "%(abs((x-coord of {_l}) - {_x}) - {_width} / 2)%"
+		#broadcast "%(abs((z-coord of {_l}) - {_z}) - {_width} / 2)%"
+		#broadcast "%(abs((y-coord of {_l}) - {_y}) - {_height} / 2)%"
+		return true
+	return false
+
+function getPlayers(p: player, l: location, radius: number, incl-mannequins: boolean = false) :: entities:
+	loop players in radius {_radius} of {_l}:
+		if any:
+			gamemode of loop-value != survival or adventure
+			{-is-spectating::%loop-value%} = true
+		then:
+			continue
+		if all:
+			{_p}'s groups contains "blue"
+			loop-value's groups contains "blue"
+		then:
+			continue
+		else if all:
+			{_p}'s groups contains "red"
+			loop-value's groups contains "red"
+		then:
+			continue
+		if {-mannequin::%loop-value%} is set:
+			continue
+		add loop-value to {_entities::*}
+	if {_incl-mannequins} = true:
+		loop mannequins in radius {_radius} of {_l}:
+			set {_owner} to {-mannequin-owner::%loop-value%}
+			if {_entities::*} contains {_owner}:
+				continue
+			add {_owner} to {_entities::*}
+	loop interactions in world of {_l}:
+		set {_interaction} to loop-value
+
+		{-is-dave-9000-interaction::%{_interaction}%} = true
+		interactionIsInRadius({_interaction}, {_l}, {_radius}) = true
+
+		set {_player} to {-dave-9000-interaction-player::%{_interaction}%}
+		{_entities::*} does not contain {_player}
+		add {_player} to {_entities::*}
+	return {_entities::*}
+
+function getPlayers(l: location, radius: number, incl-mannequins: boolean = false) :: entities:
+	loop players in radius {_radius} of {_l}:
+		if any:
+			gamemode of loop-value != survival or adventure
+			{-is-spectating::%loop-value%} = true
+		then:
+			continue
+		if {-mannequin::%loop-value%} is set:
+			continue
+		add loop-value to {_entities::*}
+	if {_incl-mannequins} = true:
+		loop mannequins in radius {_radius} of {_l}:
+			set {_owner} to {-mannequin-owner::%loop-value%}
+			if {_entities::*} contains {_owner}:
+				continue
+			add {_owner} to {_entities::*}
+	loop interactions in world of {_l}:
+		set {_interaction} to loop-value
+
+		{-is-dave-9000-interaction::%{_interaction}%} = true
+		interactionIsInRadius({_interaction}, {_l}, {_radius}) = true
+
+		set {_player} to {-dave-9000-interaction-player::%{_interaction}%}
+		{_entities::*} does not contain {_player}
+		add {_player} to {_entities::*}
+	return {_entities::*}
+
+# credit: sovde from skUnity
+
+# Basic circle. step-size is in degrees.
+# yaw/pitch can be used to tilt the circle in various ways
+function circle(center: location, radius: number, stepSize: number = 10, yaw: number = 0, pitch: number = 0) :: locations:
+	# refernce vector for rotation around
+	set {_reference} to vector from yaw {_yaw} + 90 and pitch 0
+	# vector to get locations with
+	set {_v} to spherical vector with radius {_radius}, yaw 0, pitch 0
+
+	# 360 degrees / step size = number of steps needed
+	loop floor(360 / {_stepSize}) times:
+		# copy vector for rotation
+		set {_temp-v} to {_v}
+		# rotate if necessary
+		if {_pitch} is not 0:
+			rotate {_temp-v} around {_reference} by {_pitch}
+		# store location and move a step
+		set {_locs::%loop-number%} to {_center} ~ {_temp-v}
+		add {_stepSize} to yaw of {_v} 
+
+	# return list of locations
+	return {_locs::*}
+
+function unformat(name: text) :: text:
+	set {_unformatted} to uncolored lowercase {_name}
+	set {_split::*} to split {_unformatted} at " | "
+	set {_new} to last element of {_split::*}
+	set {_new} to {_new} in kebab case
+	return {_new}
+
+
+function groundShakeArea(l: location, r: number, delay: timespan = 40 ticks, block-override-list: item types = barrier):
+	loop blocks in radius {_r} of {_l} where [abs(y-coord of {_l} - y-coord of input) <= 1]:
+		groundShake(loop-value, {_delay}, (random element of {_block-override-list::*}))
+
+function groundShake(l: location, delay: timespan = 40 ticks, block-override: item type = barrier):
+
+	{except::*} does not contain block at {_l}
+
+	set {_block} to block at {_l}
+	set {_blockData} to block data of {_block}
+
+	#set block data of {_block} without updates to barrier
+	make (all players where [input's world = world of {_l}]) see block at {_block} as barrier
+	set {-block-shaken::%{_block}%} to now
+	set {_time} to {-block-shaken::%{_block}%}
+
+	if block 1 above {_l} is passable:
+		set {_blockDataAbove} to block data of block 1 above {_l}
+		make (all players where [input's world = world of {_l}]) see block 1 above {_l} as air
+
+	spawn block display at location 2 above {_l}:
+		set {_display} to event-entity
+		if {_block-override} = barrier:
+			set block data of {_display} to {_blockData}
+		else:
+			set block data of {_display} to ("%{_block-override}%" parsed as block data)
+		set display translation of {_display} to vector(-0.5, -2.5, -0.5)
+
+	chance of 10%: 
+		draw 1 campfire cosy smoke particle with particle speed 0.03 at location 0.5 above {_l}
+
+	draw 1 {_blockData} block particle with offset vector(0.5, 0.5, 0.5) at {_l}
+
+	set {_angle} to (random integer between -300 and 300) / 10
+
+	#set {_weight} to random element of 1 and -1gim
+	#set {_v} to display translation of {_v}
+	#rotate {_v} around vector(0, 1, 0) by {_angle} degrees
+	#set display translation of {_display} to {_v}
+	rotate {_display} around vector(0, 1, 0) by {_angle} degrees
+	rotate {_display} around vector(1, 0, 0) by {_angle} / 5 degrees
+	#set right transformation rotation of {_display} to quaternion({_rand::1}, {_rand::2}, {_rand::3}, {_weight})
+
+	loop (ticks of {_delay}) times:
+		wait 1 tick
+		if block data of block at {_l} != {_blockData}:
+			kill {_display}
+			stop
+
+	if {-block-shaken::%{_block}%} != {_time}:
+		kill {_display}
+		stop
+
+	set interpolation delay of {_display} to 0 ticks
+	set interpolation duration of {_display} to 20 ticks
+
+	#set right transformation rotation of {_display} to quaternion(0, 0, 0, 1)
+	#set {_v} to display translation of {_v}
+	#rotate {_v} around vector(0, 1, 0) by ({_angle} * -1) degrees
+	#set display translation of {_display} to {_v}
+	rotate {_display} around vector(1, 0, 0) by {_angle} / 5 * -1 degrees
+	rotate {_display} around vector(0, 1, 0) by {_angle} * -1 degrees
+
+	loop 20 times:
+		if {-block-shaken::%{_block}%} != {_time}:
+			kill {_display}
+			stop
+		wait 1 tick
+
+	kill {_display}
+	#if block at {_l} = barrier:
+	#	set block at {_l} to {_type}
+	#else:
+	#	set block at {_l} to air
+	make (all players where [input's world = world of {_l}]) see block at {_l} as {_blockData}
+
+	if {_blockDataAbove} is set:
+		make (all players where [input's world = world of {_l}]) see block 1 above {_l} as {_blockDataAbove}
+
+	delete {-block-shaken::%{_block}%}
+
+function getWASD(p: player) :: vector:
+
+	set {_v} to vector from yaw {_p}'s yaw and pitch 0
+
+	if {_p}'s input keys contains forward movement key:
+		if {_p}'s input keys contains left movement key:
+			add -45 to yaw of {_v}
+		if {_p}'s input keys contains right movement key:
+			add 45 to yaw of {_v}
+
+	else if {_p}'s input keys contains backward movement key:
+		set {_v} to {_v} * -1
+		if {_p}'s input keys contains left movement key:
+			add 45 to yaw of {_v}
+		if {_p}'s input keys contains right movement key:
+			add -45 to yaw of {_v}
+
+	else if {_p}'s input keys contains left movement key:
+		{_p}'s input keys does not contain right movement key
+		add -90 to yaw of {_v}
+
+	else if {_p}'s input keys contains right movement key:
+		{_p}'s input keys does not contain left movement key
+		add 90 to yaw of {_v}
+
+	else:
+		return vector(0, 0, 0)
+
+	return {_v}
+
+function throwOutFallingBlock(l: location, dir: string = "all", speed: number = 0.5):
+
+	set {_fallingBlockType} to "falling %type of block at {_l}%" parsed as entity type
+	spawn {_fallingBlockType} at location 1 above {_l}:
+		set {_fallingBlock} to event-entity
+		set block data of {_fallingBlock} to block data of block at {_l}
+		add nbt compound of "{CancelDrop:1b}" to nbt compound of {_fallingBlock}
+		#set generic scale attribute of {_falling-block} to 0.5
+
+	set {_yaw} to (random number between 0 and 360)
+	if {_dir} = "all":
+		set {_pitch} to (random number between -90 and 90)
+	else if {_dir} = "down":
+		set {_pitch} to (random number between 0 and 90)
+	else if {_dir} = "up":
+		set {_pitch} to (random number between -90 and 0)
+
+	set {_v} to vector from yaw {_yaw} and pitch {_pitch}
+	push {_fallingBlock} {_v} at speed {_speed}
+
+function toSmallFont(text: string) :: string:
+	set {_in} to "abcdefghijklmnopqrstuvwxyz"
+	set {_in::*} to {_in} split at ""
+	set {_out} to "ᴀʙᴄᴅᴇꜰɢʜɪᴊᴋʟᴍɴᴏᴘꞯʀꜱᴛᴜᴠᴡxʏᴢ"
+	set {_out::*} to {_out} split at ""
+	loop (size of {_in::*}) times:
+		replace all "%{_in::%loop-counter%}%" in {_text} with "%{_out::%loop-counter%}%"
+	return {_text}
+
+function largeSmokeTrail(e: entity):
+	while {_e} is alive:
+		draw 1 smoke particle with particle speed 0 at {_e}
+		wait 1 tick
+
+function fallingDebris(l: location, radius: number, velocity: number = 1):
+	loop 20 times:
+		set {_v} to spherical vector radius {_radius}, yaw loop-value * 18, pitch 0
+		set {_type} to type of block at location 1 below {_l} ~ {_v}
+
+		{_type} != air or barrier block
+
+		set {_falling-block-entity} to ("falling %{_type}%" parsed as entity type)
+		spawn {_falling-block-entity} at location 0.5 above {_l} ~ {_v}:
+			set {_falling-block} to event-entity
+			add nbt compound of "{DropItem:0b}" to nbt compound of {_falling-block}
+
+		push {_falling-block} (vector from {_l} to {_falling-block}) at speed 0.5 * {_velocity}
+		push {_falling-block} up at speed 0.35 * {_velocity}
+
+		#largeSmokeTrail({_falling-block})
+
+function itemDebrisLoop(display: entity, v: vector):
+	set {_temp-l} to location of {_display}
+	set yaw of {_temp-l} to yaw of {_v}
+	set pitch of {_temp-l} to 0
+	set {_acceleration} to 0.1
+	set vector length of {_v} to 0.5
+	set y component of {_v} to 0.25
+	while {except::*} contains block at {_display}:
+		if loop-counter >= 50:
+			exit loop
+		set y component of {_v} to (y component of {_v}) - {_acceleration}
+		set {_temp-l} to {_temp-l} ~ {_v}
+		teleport {_display} to {_temp-l}
+		wait 1 tick
+	wait 1 tick
+	kill {_display}
+
+function itemDebris(l: location, radius: number, item: item type, scale: number = 0.5):
+	loop 36 times:
+		set {_v} to spherical vector radius {_radius}, yaw loop-value * 10, pitch 0
+		spawn item display at {_l} ~ {_v}:
+			set {_display} to event-entity
+			set item of event-entity to {_item}
+			set teleport duration of event-entity to 1 tick
+			set display scale of event-entity to vector({_scale}, {_scale}, {_scale})
+			itemDebrisLoop(event-entity, {_v})
+
+function powerActionBar(p: player, name: text):
+	while {-action-bar::%{_p}%::%{_name}%} = true:
+		loop-counter >= 400:
+			exit loop
+		set {_idx} to mod(loop-counter, 30) + 1
+		set {_text} to formatted {action-bar-text::%{_name}%::%{_idx}%}
+		send action bar {_text} to {_p}
+		wait 1 tick
+		send action bar "" to {_p}
+
+function spawnFloatingBlock(l: location, item: item, scale: number = 4, yaw: number = 0, pitch: number = 0, lifetime: number = 40, separation: number = 0.2, rise: number = 0):
+
+	set {_l} to location 8 above {_l}
+	set yaw of {_l} to 0
+	set pitch of {_l} to 0
+
+	spawn item display at {_l}:
+		set {_display} to event-entity
+		#set {_head} to {heads::gray-orb}
+		set item of {_display} to {_item}
+		set display scale of {_display} to vector({_scale}, {_scale}, {_scale})
+		set display translation of {_display} to vector(0, -8, 0)
+		set interpolation duration of {_display} to 1 tick
+		set teleport duration of {_display} to 1 tick
+
+	#set {_yaw} to random integer between 1 and 360
+	#set {_pitch} to random integer between -90 and 0
+	#set {_pitch} to 0
+
+	set {_v} to vector from yaw {_yaw} and pitch {_pitch}
+	set vector length of {_v} to {_scale} * {_separation}
+	teleport {_display} to {_temp-l}
+	teleport {_display} to {_l} ~ {_v}
+
+	rotate {_display} around y-axis by {_yaw} degrees
+	rotate {_display} around x-axis by {_pitch} * {_separation} + (random integer between 1 and 180) degrees
+
+	loop {_lifetime} times:
+		set interpolation delay of {_display} to 0 ticks
+
+		set {_new-scale} to {_scale} * sin(180 * loop-value / {_lifetime}) ^ 0.66
+		set display scale of {_display} to vector({_new-scale}, {_new-scale}, {_new-scale})
+
+		set {_temp-l} to location {_rise} above {_display}
+		teleport {_display} to {_temp-l}
+
+		rotate {_display} around y-axis by 3 degrees
+		rotate {_display} around x-axis by 1.5 degrees
+		#set vector length of {_v} to (vector length of {_v}) * 0.95
+
+		wait 1 tick
+
+	kill {_display}
+
+function spawnFloatingBlockCluster(l: location, item: item, count: number = 8, scale: number = 16, lifetime: number = 40, separation: number = 0.2, rise: number = 0):
+	loop {_count} times:
+		set {_yaw} to 360 * (loop-value / {_count})
+		set {_pitch} to (-90 + 180 * ((loop-value - 1) / ({_count} - 1)))
+		spawnFloatingBlock({_l}, {_item}, {_scale}, 360 * (loop-value / {_count}), {_pitch} * 0.05, {_lifetime}, {_separation}, {_rise})
+		#if mod(loop-counter, 2) = 0:
+			#wait 2 ticks
+
+function getTargetLocation(p: player, range: number = 64) :: location:
+	set {_ray} to ray trace from {_p} with max distance {_range} while ignoring passable blocks while ignoring entities
+	set {_l} to hit location of {_ray}
+	return {_l}
+
+function getFloorBlock(l: location) :: location:
+	return first element of ((blocks between (highest block at {_l}) and (lowest block at {_l})) where [input is not passable])
+
+function getNearest(l: location, e: entities) :: entity:
+	set {_nearest} to first element of {_e::*}
+	loop {_e::*}:
+		if distance between {_l} and loop-value < distance between {_l} and {_nearest}:
+			set {_nearest} to loop-value
+	return {_nearest}
+
+function getNearest(p: player, l: location, e: entities) :: entity:
+	set {_e::*} to {_e::*} where [input != {_p}]
+	set {_nearest} to first element of {_e::*}
+	loop {_e::*}:
+		if distance between {_l} and loop-value < distance between {_l} and {_nearest}:
+			set {_nearest} to loop-value
+	return {_nearest}
+
+function getMagnitude(v: vector) :: number:
+	return sqrt((x component of {_v}) ^ 2 + ((y component of {_v}) ^ 2) + ((z component of {_v}) ^ 2))
+
+function getHorizontalDistance(l: location, l2: location) :: number:
+	set {_l2} to location of {_l2}
+	set y-coord of {_l2} to y-coord of {_l}
+	return distance between {_l} and {_l2}
+
+function applyInvis(p: entity, name: text = ""):
+	if getPlayerSide({_p}) is set:
+		make {_p} not glow for all players
+	if {_name} = "mooshroom":
+		apply potion effect of invisibility to {_p} for eternity:
+			hide particles
+			hide icon
+	else if {-transformed::%{_p}%::magic-stew} != true:
+		apply potion effect of invisibility to {_p} for eternity:
+			hide particles
+			hide icon
+	else:
+		set {_mooshroom} to {-mooshroom::%{_p}%}
+		apply potion effect of invisibility to {_mooshroom} for eternity:
+			hide particles
+			hide icon
+
+function removeInvis(p: entity, name: text = ""):
+	set {_lobby} to getLobby({_p})
+
+	if {-gamemode::%{_lobby}%} = "team-deathmatch" or "king-of-the-hill":
+		make {_p} glow (getPlayerSide({_p}) parsed as color) for all players
+
+	if {_name} = "mooshroom":
+		if any:
+			{-power-active::%{_p}%::dave-9000} = true
+			{-power-active::%{_p}%::giant-snowball} = true
+			{-power-active::%{_p}%::petrify} = true
+			{-power-active::%{_p}%::drill} = true
+			{-trapped::%{_p}%::shulker-box} = true
+		then:
+			stop
+
+	if {-transformed::%{_p}%::magic-stew} != true:
+		remove invisibility from potion effects of {_p}
+	else:
+		set {_mooshroom} to {-mooshroom::%{_p}%}
+		remove invisibility from potion effects of {_mooshroom}
+
+function getRarity(name: text) :: text:
+	return first element of ((uncolored lowercase {_name}) split at " | ")
+
+function getPowerNamesOfRarity(rarity: text) :: texts:
+	return {power-names-by-rarity::%{_rarity}%::*}
+
+function getPowersOfRarity(rarity: text) :: items:
+	return {powers-by-rarity::%{_rarity}%::*}
+
+function getDistinctRandom(arr: objects, num: integer) :: objects:
+	loop {_num} times:
+		set {_idx} to random element of indices of {_arr::*}
+		add {_arr::%{_idx}%} to {_random::*}
+		remove {_arr::%{_idx}%} from {_arr::*}
+	return sorted {_random::*}
+
+function isPower(i: item) :: boolean:
+	if (int tag "IsPower" of custom nbt compound of {_i}) = 1:
+		return true
+	return false
+
+function killFakeItemDelayed(ent: entity, delay: timespan = 20 ticks):
+	wait {_delay}
+	kill {_ent}
+
+function dropFakeItem(l: location, i: item type, count: number = 1, offset: vector = vector(0, 0, 0), lifetime: timespan = 20 ticks):
+	set {_x} to x component of {_offset}
+	set {_y} to y component of {_offset}
+	set {_z} to z component of {_offset}
+
+	loop {_count} times:
+		loop {_x}, {_y} and {_z}:
+			set {_v::%loop-counter-2%} to (random integer between {_x} * -100 and {_x} * 100) / 100
+		set {_v} to vector({_v::1}, {_v::2}, {_v::3})
+		set name of {_i} to "FAKE ITEM %random integer between 1 and 999999%"
+		drop 1 of {_i} at {_l} ~ {_v}
+		push {_i} {_v} at speed 0.25
+		killFakeItemDelayed(last dropped item, {_lifetime})
+
+on pickup:
+	if name of event-item contains "FAKE ITEM":
+		cancel event
+
+function isFreeToMove(p: entity) :: boolean:
+	if any:
+		{-power-active::%{_p}%::giant-snowball} = true
+		{-power-active::%{_p}%::flying-machine} = true
+		{-power-active::%{_p}%::tennis-cannon} = true
+		{-power-active::%{_p}%::dave-9000} = true
+		{-power-active::%{_p}%::petrify} = true
+		{-power-active::%{_p}%::drill} = true
+		{-power-active::%{_p}%::steamroller} = true
+		{-power-active::%{_p}%::rocket} = true
+		{-trapped::%{_p}%::shulker-box} = true
+		{-trapped::%{_p}%::hot-air-balloon} = true
+		{-party-cannon-interaction::%{_p}%} is set
+	then:
+		return false
+	return true
+
+function cardinalDirectionToYaw(dir: object) :: number:
+	if {_dir} = north_face:
+		return 0
+	if {_dir} = south_face:
+		return 180
+	if {_dir} = east_face:
+		return 270
+	if {_dir} = west_face:
+		return 90
+	else:
+		return 0
+
+function dyed(i: item, c: color) :: item:
+	dye {_i} {_c}
+	return {_i}

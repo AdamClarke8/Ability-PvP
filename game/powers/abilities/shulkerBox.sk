@@ -1,0 +1,202 @@
+options:
+    speed: 1
+
+# FF00CF.F400C8.E800C0.DD00B9.D100B2.C600AB.BA00A3.AF009C.A40095.98008D.8D0086.81007F.760078.6A0070.5F0069.
+
+on script load:
+    delete {action-bar-text::shulker-box::*}
+    set {action-bar-text::shulker-box::1} to "<##FF00CF>LEFT-CLICK TO RELEASE"
+    set {action-bar-text::shulker-box::2} to "<##FF00CF>LEFT-CLICK TO RELEASE"
+    set {action-bar-text::shulker-box::3} to "<##FF00CF>LEFT-CLICK TO RELEASE"
+    set {action-bar-text::shulker-box::4} to "<##FF00CF>LEFT-CLICK TO RELEASE"
+    set {action-bar-text::shulker-box::5} to "<##FF00CF>LEFT-CLICK TO RELEASE"
+    set {action-bar-text::shulker-box::6} to "<##F400C8>LEFT-CLICK TO RELEASE"
+    set {action-bar-text::shulker-box::7} to "<##E800C0>LEFT-CLICK TO RELEASE"
+    set {action-bar-text::shulker-box::8} to "<##DD00B9>LEFT-CLICK TO RELEASE"
+    set {action-bar-text::shulker-box::9} to "<##D100B2>LEFT-CLICK TO RELEASE"
+    set {action-bar-text::shulker-box::10} to "<##C600AB>LEFT-CLICK TO RELEASE"
+    set {action-bar-text::shulker-box::11} to "<##BA00A3>LEFT-CLICK TO RELEASE"
+    set {action-bar-text::shulker-box::12} to "<##AF009C>LEFT-CLICK TO RELEASE"
+    set {action-bar-text::shulker-box::13} to "<##A40095>LEFT-CLICK TO RELEASE"
+    set {action-bar-text::shulker-box::14} to "<##98008D>LEFT-CLICK TO RELEASE"
+    set {action-bar-text::shulker-box::15} to "<##8D0086>LEFT-CLICK TO RELEASE"
+    set {action-bar-text::shulker-box::16} to "<##81007F>LEFT-CLICK TO RELEASE"
+    set {action-bar-text::shulker-box::17} to "<##760078>LEFT-CLICK TO RELEASE"
+    set {action-bar-text::shulker-box::18} to "<##6A0070>LEFT-CLICK TO RELEASE"
+    set {action-bar-text::shulker-box::19} to "<##5F0069>LEFT-CLICK TO RELEASE"
+    set {action-bar-text::shulker-box::20} to "<##5F0069>LEFT-CLICK TO RELEASE"
+    set {action-bar-text::shulker-box::21} to "<##5F0069>LEFT-CLICK TO RELEASE"
+    set {action-bar-text::shulker-box::22} to "<##5F0069>LEFT-CLICK TO RELEASE"
+    set {action-bar-text::shulker-box::23} to "<##6A0070>LEFT-CLICK TO RELEASE"
+    set {action-bar-text::shulker-box::24} to "<##760078>LEFT-CLICK TO RELEASE"
+    set {action-bar-text::shulker-box::25} to "<##81007F>LEFT-CLICK TO RELEASE"
+    set {action-bar-text::shulker-box::26} to "<##8D0086>LEFT-CLICK TO RELEASE"
+    set {action-bar-text::shulker-box::27} to "<##98008D>LEFT-CLICK TO RELEASE"
+    set {action-bar-text::shulker-box::28} to "<##A40095>LEFT-CLICK TO RELEASE"
+    set {action-bar-text::shulker-box::29} to "<##AF009C>LEFT-CLICK TO RELEASE"
+    set {action-bar-text::shulker-box::30} to "<##BA00A3>LEFT-CLICK TO RELEASE"
+    set {action-bar-text::shulker-box::31} to "<##C600AB>LEFT-CLICK TO RELEASE"
+    set {action-bar-text::shulker-box::32} to "<##D100B2>LEFT-CLICK TO RELEASE"
+    set {action-bar-text::shulker-box::33} to "<##DD00B9>LEFT-CLICK TO RELEASE"
+    set {action-bar-text::shulker-box::34} to "<##E800C0>LEFT-CLICK TO RELEASE"
+    set {action-bar-text::shulker-box::35} to "<##F400C8>LEFT-CLICK TO RELEASE"
+
+function shulkerBox(p: player):
+    
+    set {-power-active::%{_p}%::shulker-box} to true
+    set {_range} to {powerAttributes::shulker-box::range}
+
+    set {_entities::*} to getLivingEntities({_p}, {_p}'s location, {_range})
+    set {_nearest} to getNearest({_p}, {_p}'s location, {_entities::*})
+
+    set {_angle} to 24
+    #set {_vel-vert} to 0.25
+    #set {_vel-hori} to {@speed}
+    #set {_acceleration} to 0.05
+
+    set {_l} to location of {_p}
+
+    if {_nearest} is set:
+        set {-powers-locked::%{_p}%} to true
+        set {-powers-locked::%{_nearest}%} to true
+        applyInvis({_nearest})
+
+        spawn item display at {_p}:
+            set {_display} to event-entity
+            set item of {_display} to shulker box
+            set display scale of {_display} to vector(1.25, 1.25, 1.25)
+            #set display translation of {_display} to vector(-0.625, -0.625, -0.625)
+            set teleport duration of {_display} to 1 tick
+            set interpolation duration of {_display} to 1 tick
+            set sky light override of {_display} to 15
+
+        spawn armor stand at {_p}:
+            set {_stand} to event-entity
+            set generic scale attribute of {_stand} to 0
+            add nbt compound of "{Invisible:1b}" to nbt compound of {_stand}
+            set {-is-shulker-box-stand::%{_stand}%} to true
+
+        make {_display} ride {_stand}
+        set {_display-l} to location of {_display}
+
+        play sound "block.shulker_box.open" at volume 3 at pitch 1.2 at {_display}
+
+        loop 36 times:
+            set {_v} to spherical vector radius 2, yaw loop-value * 10, pitch 0
+            draw 0 poof particle with offset {_v} with particle speed 0.25 at {_display-l} ~ {_v}
+            draw 0 witch particle at {_display-l} ~ {_v}
+            #draw 0 cloud at {_l} ~ {_v} with offset {_v} with extra 0.25
+
+        make {_nearest} ride {_stand}
+        set {-trapped::%{_nearest}%::shulker-box} to true
+        send action bar " " to {_nearest}
+
+        set {-action-bar::%{_p}%::shulker-box} to true
+        powerActionBar({_p}, "shulker-box")
+
+        loop 60 times:
+
+            if {-release::%{_p}%::shulker-box} = true:
+                delete {-release::%{_p}%::shulker-box}
+                exit loop
+
+            else if hasDied({_p}) = true:
+                exit loop
+
+            else if loop-counter = 5:
+                set {-charging::%{_p}%::shulker-box} to true
+
+            set interpolation delay of {_display} to 0 ticks
+            set {_temp-l} to location 1.3 above location 3 infront {_p}
+
+            while {except::*} does not contain block at {_temp-l}:
+                if loop-counter-2 > 60:
+                    exit loop
+                set {_temp-l} to location 0.05 behind {_temp-l}
+
+            #teleport {_display} to {_temp-l}
+            teleport {_stand} to {_temp-l}
+            rotate {_display} around y-axis by {_angle} degrees
+            rotate {_display} around x-axis by {_angle} / 2 degrees
+            rotate {_display} around z-axis by {_angle} / 8 degrees
+
+            play sound "entity.breeze.charge" at volume 1.5 at pitch 1.5 at {_display}
+            play sound "entity.phantom.flap" at volume 1.5 at pitch 1.5 at {_display}
+
+            wait 1 tick
+
+        delete {-charging::%{_p}%::shulker-box}
+        delete {-action-bar::%{_p}%::shulker-box}
+        delete {-powers-locked::%{_p}%}
+
+        set {_temp-l} to location 1.3 above location 3 infront {_p}
+        teleport {_stand} to {_temp-l}
+
+        set {_v} to vector from yaw (yaw of {_p}) and pitch (pitch of {_p})
+        applyPush({_stand}, {_v} * 2.5, {_p}, "shulker-box")
+
+        play sound "entity.breeze.jump" at volume 3 at pitch 1 at {_display}
+        play sound "entity.firework_rocket.launch" at volume 3 at pitch 1.5 at {_display}
+
+        while {_stand} is alive:
+
+            set {_y-diff} to (y-coord of {_temp-l} - y-coord of {_l})
+
+            play sound "entity.breeze.charge" at volume 1.5 at pitch 1 + {_y-diff} / 5 at {_display}
+            play sound "entity.phantom.flap" at volume 1.5 at pitch 1 + {_y-diff} / 5 at {_display}
+            #play sound "block.note_block.flute" at volume 1.5 at pitch 2 - loop-counter / 20 at {_display}
+
+            set interpolation delay of {_display} to 0 ticks
+    
+            set {_temp-l} to location of {_stand}
+
+            if y-coord of {_nearest} < (y-coord of getCurrentMapCentre(getLobby({_nearest})) - 10):
+                set {_hit-void} to true
+                exit loop
+
+            else if loop-counter >= 500:
+                exit loop
+
+            else if {except::*} does not contain block 0.5 below {_temp-l}:
+                exit loop
+
+            #set {_vel-vert} to {_vel-vert} - {_acceleration}
+            #set {_temp-l} to location {_vel-vert} above location {_vel-hori} infront {_temp-l}
+
+            #teleport {_display} to {_temp-l}
+            rotate {_display} around y-axis by {_angle} degrees
+            rotate {_display} around x-axis by {_angle} / 2 degrees
+            rotate {_display} around z-axis by {_angle} / 8 degrees
+
+            wait 1 tick
+
+        teleport {_display} to location 1 above {_display}
+        removeInvis({_nearest})
+        kill {_display}
+        kill {_stand}
+        delete {-powers-locked::%{_nearest}%}
+        delete {-trapped::%{_nearest}%::shulker-box}
+
+        makeDamage({_p}, {_nearest}, {powerAttributes::shulker-box::damage}, "shulker-box")
+    
+        play sound "block.shulker_box.open" at volume 3 at pitch 1.2 at {_temp-l}
+        play sound "entity.generic.explode" at volume 3 at pitch 1.2 at {_temp-l}
+    
+        draw 1 explosion particle at {_temp-l}
+        draw 100 shulker box block particle with offset vector(1, 1, 1) at {_temp-l}
+
+        if {_hit-void} = true:
+            draw 10 crit particle with offset vector(1, 1, 1) with particle speed 0.25 at {_nearest}
+            play sound "enchant.thorns.hit" at volume 3 at pitch 1.2 at {_nearest}
+            wait 1 tick
+            applyPush({_nearest}, vector(0, 2.5, 0), {_p}, "shulker-box")
+
+    delete {-power-active::%{_p}%::shulker-box}
+
+on arm swing:
+    if {-charging::%player%::shulker-box} = true:
+        set {-release::%player%::shulker-box} to true
+
+on dismount:
+    if {-is-shulker-box-stand::%vehicle of event-entity%} = true:
+        cancel event

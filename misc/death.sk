@@ -1,0 +1,251 @@
+function hasDied(p: player) :: boolean:
+    time since {-last-death::%{_p}%} <= 5 seconds:
+        return true
+    return false
+
+options:
+    general: "party-cannon"
+
+on script load:
+
+    set {general-death-name::party-cannon} to "&bParty Cannon"
+    set {general-death-msg::party-cannon} to "was struck by"
+
+    set {power-death-msg::missile} to "was exploded by"
+    set {power-death-msg::giant-snowball} to "was engulfed in snow by"
+    set {power-death-msg::sledgehammer} to "was pummelled by"
+    set {power-death-msg::burger} to "was made into a sandwich by"
+    set {power-death-msg::popcorn} to "was hit with a barrage of kernels by"
+    set {power-death-msg::flying-machine;tnt} to "was exploded from above by"
+    set {power-death-msg::flying-machine;trample} to "was trampled by"
+    set {power-death-msg::dave-9000;laser} to "was lasered down by"
+    set {power-death-msg::dave-9000;trample} to "was trampled by"
+    set {power-death-msg::minecart} to "was crashed into by"
+    set {power-death-msg::stalagmites} to "was impaled by"
+    set {power-death-msg::piano} to "was musically squashed by"
+    set {power-death-msg::lightning-rod} to "was smited by"
+    set {power-death-msg::barrel} to "was rolled over by"
+    set {power-death-msg::tennis-cannon} to "lost a deuce to"
+    set {power-death-msg::fire-in-a-bottle} to "was burnt to a crisp by"
+    set {power-death-msg::giant-mushroom} to "got a taste of mother nature from"
+    set {power-death-msg::ufo} to "was abducted by extraterrestrials sent by"
+    set {power-death-msg::nether-portal} to "was sent to the Nether by"
+    set {power-death-msg::hook} to "was grappled by"
+    set {power-death-msg::meteor-strike;impact} to "was crushed by"
+    set {power-death-msg::meteor-strike;burn} to "was burnt alive by"
+    set {power-death-msg::mighty-mace} to "was smooshed by"
+    set {power-death-msg::petrify} to "was trembled by"
+    set {power-death-msg::traffic-lights} to "was caught jaywalking by"
+    set {power-death-msg::magic-stew} to "was struck suspiciously by"
+    set {power-death-msg::drill} to "felt the ground shifting beneath them due to"
+    set {power-death-msg::windmill} to "was blown off the edge by"
+    set {power-death-msg::magmarizer} to "was melted by"
+    set {power-death-msg::ice-in-a-bottle} to "was frozen to death by"
+    set {power-death-msg::steamroller} to "was crushed by"
+    set {power-death-msg::rocket} to "was rocketed down by"
+    set {power-death-msg::blender} to "was blended finely by"
+    set {power-death-msg::shulker-box} to "was boxed away by"
+    #set {power-death-msg::vent} to "was stealth attacked by"
+    set {power-death-msg::fist} to "was sucker punched by"
+    set {power-death-msg::landmines} to "was detonated by"
+    set {power-death-msg::hot-air-balloon} to "was blasted mid-air by"
+    set {power-death-msg::drone} to "was hunted down by"
+    set {power-death-msg::pothole} to "was bashed with a pickaxe by"
+    set {power-death-msg::barricade} to "was walled off by"
+
+function respawn(p: player, lobby: text, map: text):
+
+    loop 5 times:
+        play sound "block.note_block.didgeridoo" at volume 10 at pitch 2 to {_p}
+        send title "&eRESPAWNING" to {_p} for 20 ticks
+        send subtitle "&fin %6 - loop-value% seconds..." to {_p}
+        wait 20 ticks
+    set {_p}'s gamemode to adventure
+    set {_randNum} to random integer between 1 and 360
+    set {_v} to spherical vector radius 8, yaw {_randNum}, pitch 0
+    set {_map} to getCurrentMap({_lobby})
+    set {_centre} to random element of {island-centre::%{_lobby}%::%{_map}%::*}
+    set {_l} to location 0.5 above {_centre} ~ {_v}
+
+    while block 0.1 below {_l} != air:
+        if loop-counter > 50:
+            exit loop
+        #set {_randNum} to random integer between 1 and 360
+        #set {_v} to spherical vector radius 8, yaw {_randNum}, pitch 0
+        set {_l} to location 0.1 above {_l}
+
+    teleport {_p} to {_l}
+    play sound "entity.enderman.teleport" at volume 3 at pitch 1.2 at {_p}
+
+    apply speed 1 to {_p} for 10 seconds:
+        hide particles
+
+    set {_side} to getPlayerSide({_p})
+    if {_side} is set:
+        make {_p} glow ({_side} parsed as color) for all players
+
+on death:
+
+    set {_victim} to victim
+
+    loop all players:
+        remove loop-value from bar players of {-bar::%{_victim}%::%uuid of loop-value%}
+        delete {-bar::%{_victim}%::%uuid of loop-value%}
+
+    {_victim} is a player
+    set {_lobby} to getLobby({_victim})
+
+    set {_l} to location of victim
+    play sound "block.anvil.place" at volume 3 at pitch 1.2 at {_l}
+
+
+    attacker is set:
+        set {_attacker} to attacker
+    else:
+        set {_attacker} to getMostRecentAttacker({_victim})
+
+    set {_damage-cause} to {-damage-cause::%{_victim}%::%{_attacker}%}
+    set {_power} to first element of ({_damage-cause} split at ";")
+
+    if indices of {powers::*} contains {_power}:
+        set {_power-name} to name of {powers::%{_power}%}
+        set {_power-msg} to {power-death-msg::%{_damage-cause}%}
+
+    else if {@general} contains {_power}:
+        set {_power-name} to {general-death-name::%{_damage-cause}%}
+        set {_power-msg} to {general-death-msg::%{_damage-cause}%}
+
+    set {_death-msg::1} to "&c🗡"
+    set {_death-msg::2} to "&8»"
+    set {_death-msg::3} to "&f%{_victim}%"
+    set {_death-msg::4} to object text component with player head from {_victim}
+
+    if gameIsRunning({_lobby}) = true:
+        add 1 to {-deaths::%{_lobby}%::%{-gamemode::%{_lobby}%}%::%{_victim}%}
+        sidebar({_victim}, "deaths")
+
+    if {_attacker} is a player:
+
+        #if {king-of-the-hill::%{_lobby}%} = true:
+        #    add 1 to {-kills::king-of-the-hill::%{_attacker}%}
+    
+        #else if {ffa} = true:
+        #    add 1 to {-kills::free-for-all::%{_attacker}%}
+            #if {-kills::free-for-all::%{_attacker}%} >= {ffa-req-kills}:
+            #    declareWinnerFFA({_attacker})
+
+        #else if {team-deathmatch::%{_lobby}%} = true:
+        #    add 1 to {-kills::team-deathmatch::%{_attacker}%}
+
+        add 1 to {-kills::%{_lobby}%::%{-gamemode::%{_lobby}%}%::%{_attacker}%}
+        sidebar({_attacker}, "kills")
+
+        if {player-options::%{_attacker}%::save-stats} != false:
+            addToStat({_attacker}, {-gamemode::%{_lobby}%}, "kills", 1)
+
+        if {_damage-cause} is set:
+            if {-fell-into-void::%{_victim}%} = true:
+                set {_death-msg::5} to "&7was knocked into the void by &f%{_attacker}%"
+            else:
+                set {_death-msg::5} to "&7%{_power-msg}% &f%{_attacker}%"
+            set {_death-msg::6} to object text component with player head from {_attacker}
+            set {_death-msg::7} to formatted "&7using %{_power-name}%"
+
+        else if {_attacker}'s tool != air:
+            if {-fell-into-void::%{_victim}%} = true:
+                set {_death-msg::5} to "&7was knocked into the void by &f%{_attacker}%"
+            else:
+                set {_death-msg::5} to "&7was slain by &f%{_attacker}%" 
+            set {_death-msg::6} to object text component with player head from {_attacker}
+            set {_tool} to {_attacker}'s tool
+            name of {_tool} is set:
+                set {_tool-text} to name of {_attacker}'s tool
+            else:
+                set {_tool-text} to "%{_attacker}'s tool%" in proper case
+            set {_death-msg::7} to formatted "&7using %{_tool-text}%"
+        else:
+            if {-fell-into-void::%{_victim}%} = true:
+                set {_death-msg::5} to "&7was knocked into the void by &f%{_attacker}%"
+            else:
+                set {_death-msg::5} to "&7was slain by &f%{_attacker}%"
+            set {_death-msg::6} to object text component with player head from {_attacker}
+
+    else if {-fell-into-void::%{_victim}%} = true:
+        if getLastPushCause({_victim}) = "windmill":
+            set {_pusher} to getMostRecentPusher({_victim})
+            if (time since {-last-pushed::%{_victim}%::%{_pusher}%}) < 3 seconds:
+                set {_power} to name of {powers::windmill}
+                set {_death-msg::5} to formatted "&7was blown away by &f%{_pusher}% &7using %{_power}%"
+                set {_death-msg::6} to object text component with player head from {_pusher}
+            else:
+                set {_death-msg::5} to "&7died"
+        else:
+            set {_death-msg::5} to "&7died"
+
+    else if {_pusher} is not set:
+        set {_death-msg::5} to "&7died"
+    
+    set {_death-msg} to merge components {_death-msg::*} joined with " "
+    send component {_death-msg} to getPlayersInLobby({_lobby})
+
+    if {free-for-all::%{_lobby}%} = true:
+
+        loop getAllAttackers({_victim}):
+            if loop-value = {_attacker}:
+                set {_points} to 20
+                send "&eKill! +%{_points}% Points" to loop-value
+            else:
+                set {_frac} to max(calcFracDamageDealt({_victim}, loop-value), 0.5)
+                set {_points} to 20 * {_frac}
+                send "&eAssist! +%{_points}% Points" to loop-value
+
+            add {_points} to {-points::%{_lobby}%::free-for-all::%loop-value%}
+            sidebar(loop-value, "points")
+            if {player-options::%{_attacker}%::save-stats} != false:
+                addToStat({_attacker}, {-gamemode::%{_lobby}%}, "points", {_points})
+
+            #if {-points::%{_lobby}%::free-for-all::%loop-value%} >= {ffa-req-points}:
+            #    declareWinnerFreeForAll(loop-value)
+
+    else if {team-deathmatch::%{_lobby}%} = true:
+
+        set {_side} to getPlayerSide({_attacker})
+        set {_points} to 20
+
+        add {_points} to {-points::%{_lobby}%::team-deathmatch::%{_side}%}
+        add {_points} to {-points::%{_lobby}%::team-deathmatch::%{_attacker}%}
+
+        if {player-options::%{_attacker}%::save-stats} != false:
+            addToStat({_attacker}, {-gamemode::%{_lobby}%}, "points", {_points})
+    
+        send "&eKill! +%{_points}% Points" to {_attacker}
+
+        sidebar(getPlayers({_lobby}), "points")
+
+        #if {-points::%{_lobby}%::team-deathmatch::%{_side}%} >= {team-deathmatch-req-points}:
+        #    declareWinnerTeamDeatmatch({_side})
+
+    set {_side} to getPlayerSide({_victim})
+    if {_side} is set:
+        make {_victim} not glow for all players
+
+    applyKillRegenToAttackers({_victim})
+
+    set {-last-death::%{_victim}%} to now
+
+    delete {-last-pushed::%{_victim}%::*}
+    delete {-last-push-cause::%{_victim}%}
+    delete {-last-damaged::%{_victim}%::*}
+    delete {-damage-cause::%{_victim}%::*}
+    delete {-total-damage-dealt::%{_victim}%::*}
+
+    set {_victim}'s gamemode to spectator
+    wait 5 ticks
+    if {_attacker} is set:
+        teleport {_victim} to {_attacker}
+        set spectator target of {_victim} to {_attacker}
+    else if y-coord of {_l} > y-coord of getCurrentMapCentre({_lobby}) - 15:
+        teleport {_victim} to {_l}
+    else:
+        teleport {_victim} to location 16 above getCurrentMapCentre({_lobby})
+    respawn({_victim}, {_lobby}, {_map})

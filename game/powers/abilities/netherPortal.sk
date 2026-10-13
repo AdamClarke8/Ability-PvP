@@ -1,0 +1,86 @@
+options:
+    e: 2.71828
+    range: 10
+    knockback: 1.5
+
+function netherPortal(p: player):
+    set {_l} to getTargetLocation({_p}, 64)
+    set yaw of {_l} to yaw of {_p}
+    set pitch of {_l} to 0
+
+    set {_portal-displays::*} to buildingToDisplay({structure::nether-portal::1}, {structure::nether-portal::2}, {structure::nether-portal::centre}, 1, {_l})
+    set {_portal-root} to {_portal-displays::1}
+
+    loop {_portal-displays::*}:
+        set display translation of loop-value to (display translation of loop-value) + vector(-0.5, 0, 0)
+        set sky light override of loop-value to 15
+        if block data of loop-value = nether portal:
+            set view range of loop-value to 0
+
+    loop 100 times:
+        if loop-value <= 15:
+            play sound "entity.phantom.flap" at volume 3 at pitch 1 at {_l}
+            set {_vertOffset} to 0.5 + easeOutBounce(loop-value / 15) * 4 - 4
+            set {_yaw} to 360 * cos(90 * loop-value / 15) ^ 4
+        else:
+            set {_vertOffset} to 0.5 + 0.75 * sin((loop-value - 15) * 9)
+            if mod(loop-value-2, 20) = 0:
+                play sound "block.portal.ambient" at volume 2 at pitch 1.5 at {_l}
+            play sound "entity.breeze.land" at volume 2 at pitch 1 + (loop-value-1) / 100 at {_l}
+            loop 45 times:
+                set {_rad} to (random integer between 1 and 100) / 50
+                set {_v} to spherical vector radius {_rad}, yaw (yaw of {_l}) + 90, pitch loop-value-2 * 8
+                draw 0 reverse portal particle with offset (vector from yaw (yaw of {_l}) and pitch 0) with particle speed {@range} at location 2 + {_vertOffset} above {_l} ~ {_v}
+    
+            loop 10 times:
+                set {_temp-l} to location 1.5 above location (loop-value-2) * {@range} / 10 infront of {_l}
+                #draw 1 happy villager at {_temp-l}
+                loop getLivingEntities({_p}, {_temp-l}, 2.5) where [input != {_p}]:
+
+                    if time since {-hit::%{_p}%::%{_ent}%::nether-portal} is set:
+                        if time since {-hit::%{_p}%::%{_ent}%::nether-portal} < 1 seconds:
+                            continue
+
+                    set {-hit::%{_p}%::%{_ent}%::nether-portal} to now
+
+                    set {_ent} to loop-value-3
+                    makeDamage({_p}, {_ent}, {powerAttributes::nether-portal::damage}, "nether-portal")
+                    applyPush({_ent}, (vector from yaw (yaw of {_l}) and pitch 0) * {@knockback}, {_p}, "nether-portal")
+
+        if loop-value = 15:
+            play sound "block.end_portal.spawn" at volume 2 at pitch 1.2 at {_l}
+            draw 1 rgb(93, 63, 211) flash particle at location 2 above {_l}
+            loop {_portal-displays::*}:
+                if block data of loop-value-2 = nether portal:
+                    set view range of loop-value-2 to 128
+                    set {_v} to display translation of loop-value-2
+                    rotate {_v} around y-axis by (yaw of {_l})
+                    draw 3 lava particle with offset vector(0.5, 0.5, 0.5) with particle speed 0.25 at loop-value-2 ~ {_v}
+    
+        teleport {_portal-root} to location {_vertOffset} above {_l}
+        rotate({_portal-root}, (yaw of {_l}) + {_yaw}, 0, false)
+        wait 1 tick
+
+    create explosion of force 2 at {_l}
+    play sound "block.respawn_anchor.deplete" at volume 3 at pitch 0.8 at {_l}
+
+    loop {_portal-displays::*}:
+        if block data of loop-value = nether portal:
+            set view range of loop-value to 0
+            set {_v} to display translation of loop-value
+            rotate {_v} around y-axis by (yaw of {_l})
+            draw 5 (block data of loop-value) block particle with offset vector(0.5, 0.5, 0.5) at loop-value ~ {_v}
+            play sound "block.glass.break" at volume 2 at pitch 1.2 at loop-value
+
+    wait 20 ticks
+
+    loop {_portal-displays::*}:
+        if block data of loop-value = obsidian:
+            set view range of loop-value to 0
+            set {_v} to display translation of loop-value
+            rotate {_v} around y-axis by (yaw of {_l})
+            draw 5 obsidian block particle with offset vector(0.5, 0.5, 0.5) at loop-value ~ {_v}
+            play sound "block.stone.break" at volume 2 at pitch 0.8 at loop-value
+            wait 2 ticks
+
+    kill {_portal-root}

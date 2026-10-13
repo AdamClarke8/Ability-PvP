@@ -1,0 +1,194 @@
+options:
+    title: "&9&lLOBBIES AVAILABLE"
+    lobby-prefix: &b&lLOBBY &8»
+    blue-border: blue stained glass pane named "&9"
+    back: arrow named "&f&lBACK"
+    lobby-switch-cooldown: 40 ticks
+
+function sendSpectatingTitle(p: players):
+    set {_sprite} to object text component with atlas "gui" with sprite "mob_effect/strength"
+    set {_text} to "&f&lGAME ONGOING"
+    send title component {_sprite} to {_p::*} for 20 ticks
+    send subtitle {_text} to {_p::*} for 20 ticks
+    play sound "block.note_block.bell" at volume 10 at pitch 1.2 to {_p::*} 
+
+function enterMatch(p: player, lobby: text):
+    openSelectionScreen({_p}, {_lobby})
+    applyInvis({_p})
+    if {-selecting-map::%{_lobby}%} = true:
+        mapSelectionScreen({_p}, {_lobby})
+        initVoteMap({_p}, {_lobby})
+    else if {-selecting-gamemode::%{_lobby}%} = true:
+        gamemodeSelectionScreen({_p}, {_lobby})
+        initVoteGamemode({_p}, {_lobby})
+    else if {-showing-powers::%{_lobby}%} = true:
+        powersScreen({_p}, {_lobby})
+    else if {-results-stage::%{_lobby}%} is set:
+        if {-results-stage::%{_lobby}%} = "leaderboard":
+            leaderboardScreen({_p}, {-gamemode::%{_lobby}%}, {_lobby})
+        else:
+            podiumScreen({_p}, {-gamemode::%{_lobby}%}, {-results-stage::%{_lobby}%}, {_lobby})
+
+function warpToLobby(p: player, lobby: text):
+
+    set {_players::*} to getPlayers({_lobby})
+
+    set {_orig-lobby} to getLobby({_p})
+
+    #if {_lobby} != getLobby({_p}):
+
+    make {_p} disappear for all players where [{_players::*} does not contain input]
+    make all players where [{_players::*} does not contain input] disappear for {_p}
+
+    make {_p} appear for {_players::*}
+    make {_players::*} appear for {_p}
+
+    make {-game-ring-display::*} disappear for {_p}
+    make {-game-title-display::*} disappear for {_p}
+
+    make {-game-ring-display::%{_lobby}%} appear for {_p}
+    make {-game-title-display::%{_lobby}%} appear for {_p}
+
+    if {-gamemode::%{_lobby}%} is set:
+        if {-orig-players::%{_lobby}%::*} contains {_p}:
+            wait 1 tick
+            make {_p} appear for getPlayersInLobby({_lobby})
+            set gamemode of {_p} to spectator
+
+            respawn({_p}, {_lobby}, getCurrentMap({_lobby}))
+        else:
+            wait 1 tick
+            enterPseudoSpectatorMode({_p})
+            teleport {_p} to location 16 above getCurrentMapCentre({_lobby})
+            sendSpectatingTitle({_p})
+            while {-is-spectating::%{_p}%} = true:
+                send action bar "&fA match is ongoing. /switch-lobby" to {_p}
+                wait 1 tick
+            #stop
+
+    else if any:
+        {-selection-in-progress::%{_lobby}%} = true
+        {-showing-results::%{_lobby}%} = true
+    then:
+        teleport {_p} to location 1 above getCurrentMapCentre({_lobby})
+        wait 20 ticks
+        enterMatch({_p}, {_lobby})
+    else if {-is-spectating::%{_p}%} = true:
+        if {-gamemode::%{_lobby}%} is not set:
+            teleport {_p} to location 1 above getCurrentMapCentre({_lobby})
+            exitSpectate({_p}, {_lobby})
+            if size of getPlayers({_lobby}) = 1:
+                startGame({_lobby})
+        #enterPseudoSpectatorMode({_p})
+        else:
+            teleport {_p} to location 16 above getCurrentMapCentre({_lobby})
+    else:
+        teleport {_p} to location 1 above getCurrentMapCentre({_lobby})
+        if size of getPlayers({_lobby}) = 1:
+            startGame({_lobby})
+
+function switchLobby(p: player, old: text, new: text):
+    {_old} != {_new}
+    if any:
+        {-selection-in-progress::%{_old}%} = true
+        {-showing-results::%{_old}%} = true
+    then:
+        deleteScreenDisplay({_p})
+        removeInvis({_p})
+        if {-selecting-gamemode::%{_old}%} = true:
+            clearVoteGamemode({_p}, {_old})
+        else if {-selecting-map::%{_old}%} = true:
+            clearVoteMap({_p}, {_old})
+    warpToLobby({_p}, {_new})
+
+local function applyLore(i: item, n: number) :: item:
+    set {_lobby} to "lobby%{_n}%"
+    set {_players::*} to getPlayers({_lobby})
+    set {_gamemode} to {-gamemode::%{_lobby}%}
+    if {_gamemode} is set:
+        set line 1 of {_i}'s lore to {formatted-gamemode-msg::%{_gamemode}%}
+    else if {-selecting-map::%{_lobby}%} = true:
+        set line 1 of {_i}'s lore to "&eSELECTING MAP"
+    else if {-selecting-gamemode::%{_lobby}%} = true:
+        set line 1 of {_i}'s lore to "&bSELECTING GAMEMODE"
+    else if {-showing-powers::%{_lobby}%} = true:
+        set line 1 of {_i}'s lore to "&dSHOWING POWERS"
+    else if {-showing-results::%{_lobby}%} = true:
+        set line 1 of {_i}'s lore to "&aSHOWING RESULTS"
+    else:
+        set line 1 of {_i}'s lore to "&f&oNO MATCH ONGOING"
+    loop {_players::*}:
+        set {_player} to loop-value
+        set line 1 + loop-counter of {_i}'s lore to "&a● %prefix of {_player}%%name of {_player}%"
+    if lobbyIsFull({_lobby}) = true:
+        set line (size of {_i}'s lore + 1) of {_i}'s lore to "&cLOBBY FULL"
+    return {_i}
+
+function lobbySelectorGui(p: player):
+
+    if {-selection-in-progress::%getLobby({_p})%} = true:
+        set gamemode of {_p} to adventure
+
+    set {_inv} to chest inventory with 6 rows named {@title}
+    set slots (integers between 0 and 9, 17, 18, 26, 27, 35, 36, integers between 44 and 53) of {_inv} to {@blue-border}
+    loop integers between 1 and ceil((size of all players) / 12) + 1:
+        set {_lobby-num::%loop-counter%} to 1
+    loop integers between 1 and 5:
+        if all:
+            lobbyIsOccupied("lobby%loop-counter%") = true
+            {_lobby-num::%loop-counter%} is not set
+        then:
+            set {_lobby-num::%loop-counter%} to 1
+    loop indices of {_lobby-num::*}:
+        set {_n} to loop-value parsed as integer
+        set {_players::*} to getPlayers("lobby%{_n}%")
+        set {_i} to compass of power 1 named "&f&lLOBBY%{_n}% &7| &a%size of {_players::*}% PLAYERS" with item flags hide enchants
+        set int tag "LobbyNumber" of custom nbt of {_i} to {_n}
+        set {_i} to applyLore({_i}, {_n})
+        set slot 9 + loop-counter of {_inv} to {_i}
+    set {-lobby-selector-gui::%{_p}%} to {_inv}
+    open {_inv} to {_p}
+
+on inventory click:
+    if event-inventory = {-lobby-selector-gui::%player%}:
+        cancel event
+        if event-slot = a compass:
+            set {_n} to int tag "LobbyNumber" of custom nbt of event-slot
+            set {_old} to getLobby(player)
+            set {_new} to "lobby%{_n}%"
+            if {_old} = {_new}:
+                error(player, "&cYou are already in this lobby!")
+                stop
+            else if (time since {-lobby-switch::%player%}) ? {@lobby-switch-cooldown} < {@lobby-switch-cooldown}:
+                error(player, "&cYou must wait %difference between (time since {-lobby-switch::%player%}) and {@lobby-switch-cooldown}% before switching lobbies again!")
+                stop
+            else if lobbyIsFull({_new}) = true:
+                error(player, "&cThis lobby is full!")
+                stop
+            set {-lobby-switch::%player%} to now
+            close inventory of player
+            switchLobby(player, {_old}, {_new})
+            send "{@lobby-prefix} &fSwitched to &f&l%uppercase {_new}%&f!" to player
+            wait 2 ticks
+            play sound "entity.enderman.teleport" at volume 10 at pitch 1.2 to player
+
+command /select-lobby:
+    permission: select-lobby
+    aliases: switch-lobby
+    trigger:
+        if all:
+            {-gamemode::%getLobby(player)%} is set
+            {-is-spectating::%player%} != true
+        then:
+            error(player, "&cYou can't switch lobbies while in a match!")
+            stop
+        lobbySelectorGui(player)
+
+on inventory close:
+    wait 1 tick
+    if all:
+        event-inventory = {-lobby-selector-gui::%player%}
+        top inventory of player != {-lobby-selector-gui::%player%}
+        {-selection-in-progress::%getLobby(player)%} = true
+    then:
+        set gamemode of player to spectator

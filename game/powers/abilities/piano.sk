@@ -1,0 +1,147 @@
+options:
+    spawnRingRadius: 8
+    spawnRingVelocity: 3
+
+function pianoSpawnRing(l: location):
+    set {_l} to location 0.5 above {_l}
+
+    loop 24 times:
+        spawn text display at {_l}:
+            set {_display} to event-entity
+            set text of {_display} to "         "
+            set display scale of {_display} to vector(1, 1, 1)
+            set billboard of {_display} to fixed
+            set teleport duration of {_display} to 1 tick
+            set interpolation duration of {_display} to 1 tick
+        if mod(loop-value, 2) = 0:
+            set color of {_display} to rgb(230, 230, 230, 175)
+        else:
+            set color of {_display} to rgb(0, 0, 0, 175)
+        set {_displays::%loop-value%} to {_display}
+
+    loop 30 times:
+        if loop-value <= 10:
+            set {_radius} to {@spawnRingRadius} * sin(90 * loop-value / 10)
+        else if loop-value >= 20:
+            set {_radius} to {@spawnRingRadius} * cos(90 * (loop-value - 20) / 10)
+        else:
+            set {_radius} to {@spawnRingRadius}
+        loop 24 times:
+            set interpolation delay of {_displays::%loop-value-2%} to 0 ticks
+            set {_yaw} to (loop-value-1) * {@spawnRingVelocity} + (loop-value-2) * 30
+            set {_v} to spherical vector radius {_radius}, yaw {_yaw}, pitch 0
+            teleport {_displays::%loop-value-2%} to {_l} ~ {_v}
+            if loop-value-2 < 13:
+                set right transformation rotation of {_displays::%loop-value-2%} to axisAngle({_yaw} * -1, vector(0, 1, 0))
+            else:
+                set right transformation rotation of {_displays::%loop-value-2%} to axisAngle(180 - {_yaw}, vector(0, 1, 0))
+        wait 1 tick
+
+    kill {_displays::*}
+
+function piano(p: player):
+
+    set {-power-active::%{_p}%::piano} to true
+
+    set {_l} to getTargetLocation({_p}, 64)
+
+    pianoSpawnRing(location 0.5 above {_l})
+
+    #loop 36 times:
+    #    set {_v} to spherical vector radius 3, yaw loop-value * 10, pitch 0
+    #    draw 0 poof at location 1 above {_l} ~ {_v} with offset {_v} with particle speed 0.05
+        #draw 0 cloud at {_l} ~ {_v} with offset {_v} with particle speed 0.25
+
+    #play sound "block.trial_spawner.spawn_item_begin" at volume 3 at pitch 1 at {_l}
+    #play sound "block.beacon.deactivate" at volume 2 at pitch 1.2 at {_l}
+
+    set {_temp-l} to location 64 above {_l}
+
+    set {_displays::*} to buildingToDisplay({structure::piano::1}, {structure::piano::2}, {structure::piano::centre}, 1, {_temp-l})
+    set {_root} to {_displays::1}
+
+    loop {_displays::*}:
+        set sky light override of loop-value to 15
+
+    set pitch of {_root} to 90
+    set {_rand-num} to random integer between 1 and 360
+    set yaw of {_root} to {_rand-num}
+
+    #set view range of {_displays::*} to 0
+    #wait 5 ticks
+    #set view range of {_displays::*} to 128
+
+    loop 30 times:
+
+        set {_vertOffset} to 63 * (cos(90 * loop-value / 30))
+        set {_temp-l} to location 1 + {_vertOffset} above {_l}
+        teleport {_root} to {_temp-l}
+
+        add loop-counter * 0.5 to yaw of {_root}
+        add loop-counter * 0.15 to pitch of {_root}
+
+        play sound "block.note_block.flute" at volume 4 + loop-value / (30 / 1.5) at pitch 1.8 - loop-value / 30 at {_temp-l}
+        play sound "block.note_block.xylophone" at volume 4 + loop-value / (30 / 1.5) at pitch 1.8 - loop-value / 30 at {_temp-l}
+        draw 1 note particle with offset vector(1, 1, 1) at {_temp-l}
+
+        wait 1 tick
+
+    create explosion of force 2 at {_temp-l}
+    fallingDebris({_temp-l}, 3, 2)
+    #spawnFloatingBlockCluster(location 0.5 below {_temp-l}, {heads::light-gray-orb}, 6, 4, 50, 0.5)
+
+    #loop {_displays::*}:
+    #    if mod(loop-counter, 2) = 0:
+    #        kill loop-value
+    #    set display brightness of loop-value to displayBrightness(1, 5)
+
+    draw 10 note particle with offset vector(1, 1, 1) at {_temp-l}
+    loop 36 times:
+        set {_v} to spherical vector radius 3, yaw loop-value * 10, pitch 0
+        draw 0 smoke particle with offset {_v} with particle speed 0.25 at location 1 above {_l} ~ {_v}
+        draw 0 campfire cosy smoke particle with offset {_v} with particle speed 0.25 at location 1 above {_l} ~ {_v}
+
+
+    play sound "entity.zombie.attack_wooden_door" at volume 3 at pitch 0.8 at {_temp-l}
+    play sound "enchant.thorns.hit" at volume 3 at pitch 0.8 at {_temp-l}
+
+    loop getLivingEntities({_p}, {_l}, {@spawnRingRadius}) where [input != {_p}]:
+        makeDamage({_p}, loop-value, {powerAttributes::piano::damage}, "piano")
+        applyPush(loop-value, (normalized vector from {_l} to loop-value) * 2 + vector(0, 0.5, 0), {_p}, "piano")
+        draw 10 crit particle with offset vector(1, 1, 1) with particle speed 0.5 at loop-value
+        draw 1 explosion particle at location 1.3 above loop-value
+        play sound "entity.player.attack.strong" at volume 3 at pitch 1.2 at loop-value
+
+    delete {-power-active::%{_p}%::piano}
+
+    # Gb aug chord
+    loop 7 times:
+        play sound "block.note_block.harp" at volume 3 at pitch 2^(loop-value / -7) at {_temp-l}
+        play sound "block.note_block.harp" at volume 3 at pitch 2^(4/12 + loop-value / -7) at {_temp-l}
+        play sound "block.note_block.harp" at volume 3 at pitch 2^(8/12 + loop-value / -7) at {_temp-l}
+        play sound "block.note_block.harp" at volume 3 at pitch 2^(1 + loop-value / -7) at {_temp-l}
+        wait 2 ticks
+
+
+    wait 30 ticks
+
+    loop shuffled {_displays::*}:
+
+        set view range of loop-value to 0
+
+        #mod(loop-counter, 2) = 0
+
+        set {_v} to display translation of loop-value
+        #rotate {_v} around y-axis by ({_l}'s yaw) * -1 degrees
+        set {_drawLoc} to location of {_root} ~ {_v}
+        draw 2 (block data of loop-value) block particle with offset vector(0.5, 0.5, 0.5) at {_drawLoc}
+        play sound "block.wood.break" at volume 0.75 at pitch 1 at loop-value
+
+        chance of 25%:
+            draw 1 smoke particle with offset vector(2, 2, 2) with particle speed 0.2 at {_l}
+        chance of 25%:
+            draw 1 campfire cosy smoke particle with offset vector(2, 2, 2) with particle speed 0.2 at {_l}
+
+        wait 1 tick
+
+    kill {_root}

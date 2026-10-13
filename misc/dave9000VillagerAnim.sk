@@ -1,0 +1,53 @@
+on script load:
+    set {dave-block} to location(-5.5, 65.5, 20.5, "game")
+
+function recordVillagerAnim(p: player, l: location, n: number = 1, ticks: number, profession: text, biome: text):
+    set {dave-9000-villager-anim::%{_n}%::profession} to {_profession}
+    set {dave-9000-villager-anim::%{_n}%::biome} to {_biome}
+    set {dave-9000-villager-anim::%{_n}%::ticks} to {_ticks}
+    send "&aRecording in 60 ticks..." to {_p}
+    wait 60 ticks
+    send "&aStarted recording!" to {_p}
+    loop {_ticks} times:
+        set {dave-9000-villager-anim::%{_n}%::vector::%loop-value%} to vector from {_l} to {_p}'s location
+        set {dave-9000-villager-anim::%{_n}%::yaw::%loop-value%} to yaw of {_p}
+        set {dave-9000-villager-anim::%{_n}%::pitch::%loop-value%} to pitch of {_p}
+        set {dave-9000-villager-anim::%{_n}%::tool::%loop-value%} to tool of {_p}
+        wait 1 tick
+    send "&eFinished recording!" to {_p}
+
+function playVillagerAnim(p: player, l: location, n: number = 1, ticks: number = 100):
+    spawn villager at {_l}
+    set {_villager} to spawned villager
+    add nbt compound of "{NoAI:1b,Invulnerable:1b}" to nbt compound of {_villager}
+    set {_profession} to {dave-9000-villager-anim::%{_n}%::profession}
+    set {_biome} to {dave-9000-villager-anim::%{_n}%::biome}
+    add nbt compound of "{VillagerData:{profession:""minecraft:%{_profession}%"",type:""minecraft:%{_biome}%""}}" to nbt compound of {_villager}
+    {_p}'s metadata "in-game" != true:
+        #send "&aPlaying recording..." to {_p}
+    loop {dave-9000-villager-anim::%{_n}%::ticks} times:
+        if loop-value > {_ticks}:
+            exit loop
+        set {_new-l} to {_l} ~ {dave-9000-villager-anim::%{_n}%::vector::%loop-value%}
+        set yaw of {_new-l} to {dave-9000-villager-anim::%{_n}%::yaw::%loop-value%}
+        set pitch of {_new-l} to {dave-9000-villager-anim::%{_n}%::pitch::%loop-value%}
+        teleport {_villager} to {_new-l}
+        set tool of {_villager} to {dave-9000-villager-anim::%{_n}%::tool::%loop-value%}
+        wait 1 tick
+    teleport {_villager} to location 50 below {_villager}
+    kill {_villager}
+    #{_p}'s metadata "in-game" != true:
+    #    send "&aFinished playing recording!" to {_p}
+
+function playAllVillagerAnims(p: player, l: location, ticks: number = 100):
+    loop (size of indices of {dave-9000-villager-anim::*}) times:
+        playVillagerAnim({_p}, {_l}, loop-value, {_ticks})
+
+command /play-villager-anims [<number>]:
+    permission: op
+    trigger:
+        if arg is set:
+            playVillagerAnim(player, {dave-block}, arg)
+        else:
+            loop (size of indices of {dave-9000-villager-anim::*}) times:
+                playVillagerAnim(player, {dave-block}, loop-value)

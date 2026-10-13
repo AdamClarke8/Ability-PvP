@@ -1,0 +1,5 @@
+on script load:
+	kill all text displays
+	kill all item displays
+	kill all markers
+	kill all interactions

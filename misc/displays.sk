@@ -1,0 +1,74 @@
+function killDisplaysOnRootDeath(root: entity, displays: entities):
+    while {_root} is alive:
+        wait 1 tick
+    kill {_displays::*}
+
+function buildingToDisplay(1: location, 2: location, origin: location, scale: number, spawn: location) :: entities:
+
+    set {_spawn} to location of {_spawn}
+    set yaw of {_spawn} to 0
+    set pitch of {_spawn} to 0
+
+    # calculate offsets
+    set {_oBlock} to block at {_origin}
+    set {_oVector} to toVector({_origin})
+    set {_normalizedScale} to vector({_scale}, {_scale}, {_scale})
+
+    summon block display at {_spawn}:
+        set {_root} to event-entity
+        set display scale of {_root} to {_normalizedScale}
+
+    loop blocks within {_1} and {_2}:
+        loop-value is not air or barrier
+        set {_vector} to toVector(location of loop-value)
+        set {_offset} to {_vector} - {_oVector}
+        set {_offset} to {_offset} * {_scale}
+        #add {_offset} to {_offsets::*}
+        #add type of loop-value to {_blocks::*}
+        #add block data of loop-value to {_block-data::*}
+       # set {_offsets::%loop-counter%} to {_offset}
+        #set {_blocks::%loop-counter%} to type of loop-value
+        set {_block-data} to block data of loop-value
+        #set {_offset} to {_offsets::%loop-counter%}
+        #set {_bType} to {_blocks::%loop-value%}
+       # set {_bData} to {_block-data::%loop-value%}
+        summon block display at {_spawn}:
+            set {_display} to event-entity
+            #set block of {_display} to {_bType}
+            set block data of {_display} to {_block-data}
+            set display scale of {_display} to {_normalizedScale}
+            set {_offset} to {_offset} - ({_normalizedScale} * 0.5)
+            set display translation of {_display} to {_offset}
+            set teleport duration of {_display} to 1 ticks
+            set interpolation duration of {_display} to 1 ticks
+            make {_display} ride {_root}
+        set {_displays::%loop-counter%} to {_display}
+    
+    #loop indices of {_offsets::*}:
+    #    set {_offset} to {_offsets::%loop-value%}
+        #set {_bType} to {_blocks::%loop-value%}
+    #    set {_bData} to {_block-data::%loop-value%}
+    #    summon block display at {_spawn}:
+    #        set {_display} to event-entity
+   #         #set block of {_display} to {_bType}
+        #    set block data of {_display} to {_bData}
+        #    set display scale of {_display} to {_normalizedScale}
+        #    set {_offset} to {_offset} - ({_normalizedScale} * 0.5)
+        #    set display translation of {_display} to {_offset}
+        #    set teleport duration of {_display} to 1 ticks
+        #    set interpolation duration of {_display} to 1 ticks
+        #    make {_display} ride {_root}
+        #set {_displays::%loop-counter%} to {_display}
+
+    killDisplaysOnRootDeath({_root}, {_displays::*})
+    return {_root} and {_displays::*}
+
+function rotateOnRollAxis(displays: entities, angle: number, vector: vector):
+    loop {_displays::*}:
+
+        set interpolation delay of loop-value to 0 ticks
+
+        set {_v} to display translation of loop-value
+        rotate {_v} around {_vector} by {_angle} degrees
+        set display translation of loop-value to {_v}
+        rotate loop-value around {_vector} by {_angle} degrees

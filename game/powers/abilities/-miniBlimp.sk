@@ -1,0 +1,98 @@
+options:
+	scale: 0.6
+	lifetime: 160
+	speed: 1
+
+function miniBlimp(p: player):
+
+	set {_l} to location of {_p}
+	set {_displays::*} to buildingToDisplay({structure::mini-blimp::1}, {structure::mini-blimp::2}, {structure::mini-blimp::centre}, {@scale}, location 2 above {_l})
+	set {_root} to {_displays::1}
+
+	loop {_displays::*} where [block data of input = cherry trapdoor]:
+		add loop-value to {_propeller-displays::*}
+
+	#spawn item display at {_l}:
+	#	set {_camera-display} to event-entity
+	#	set item of {_camera-display} to {heads::camera}
+	#	set display scale of {_camera-display} to vector(0.75, 0.75, 0.75)
+	#	make {_camera-display} ride {_root}
+	#	set {_v} to {@scale} * vector(0, 1, 1)
+		#rotate {_v} around y-axis by (yaw of {_p})
+		#set display translation of {_camera-display} to {_v}
+	#	set pitch of {_camera-display} to 0
+	#	set right transformation rotation of {_camera-display} to axisAngle((yaw of {_p}) + 180, vector(0, 1, 0))
+	#	set teleport duration of {_camera-display} to 1 tick
+
+	spawn block display at {_l}:
+		set {_seat} to event-entity
+		#add nbt compound from "{Invisible:1b,NoGravity:1b}" to nbt compound of {_seat}
+		#set generic scale attribute of {_seat} to 0
+		set {-is-mini-blimp-seat::%{_seat}%} to true
+
+	#set camera of {_p} to entity with id (entity id of {_seat})
+	set {_mannequin} to spawnMannequinClone({_p}, {_l})
+	make {_p} ride {_seat}
+	applyInvis({_p})
+
+	loop {@lifetime} times:
+		if hasDied({_p}) = true:
+			exit loop
+
+		if {_p} is offline:
+			exit loop
+
+		set {_v} to getWASD({_p})
+		
+		if {_v} != vector(0, 0, 0):
+
+			#set y component of {_v} to sin(pitch of {_p}) * -1
+			set vector length of {_v} to min({@speed}, loop-counter / 40)
+
+		if current input keys of {_p} contains jump key:
+			add 0.5 to y component of {_v}
+
+		if current input keys of {_p} contains sneak key:
+			add -0.5 to y component of {_v}
+
+		if all:
+			{except::*} contains block at {_l} ~ {_v}
+			{except::*} contains block at {_l} ~ {_v} * 0.5
+			{except::*} contains block at {_l} ~ {_v} * 2
+		then:
+			set {_l} to location ({-ufo-velocity::%{_seat}%}) above {_l} ~ {_v}
+
+		set yaw of {_l} to yaw of {_p}
+		set pitch of {_l} to pitch of {_p}
+		teleport {_root} to {_l}
+		teleport {_seat} to {_l}
+
+		set {_angle} to min(48, 12 + loop-counter)
+		add {_angle} to {_propeller-yaw}
+
+
+		loop {_propeller-displays::*}:
+			set {_v} to {@scale} * vector(-3 + 2 * (loop-counter-2), 0, -2)
+			set interpolation delay of loop-value-2 to 0 ticks
+			set display translation of loop-value-2 to (display translation of loop-value-2) - {_v}
+			rotateOnRollAxis(loop-value-2, {_angle}, vector(0, 1, 0))
+			set interpolation delay of loop-value-2 to 0 ticks
+			set display translation of loop-value-2 to (display translation of loop-value-2) + {_v}
+
+
+		#rotate({_root}, yaw of {_p}, 0, false)
+		#rotate({_seat}, yaw of {_p}, 0, false)
+		wait 1 ticks
+
+	removeInvis({_p})
+	#set camera of {_p} to entity with id (entity id of {_p})
+
+	kill {_root}
+	kill {_camera-display}
+
+	endMannequinLoop({_p}, {_mannequin})
+	kill {_seat}
+
+on dismount:
+	if {-is-mini-blimp-seat::%vehicle of event-entity%} = true:
+		cancel event

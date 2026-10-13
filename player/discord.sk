@@ -1,0 +1,127 @@
+options:
+    token: "REDACTED"
+    name: "MyServer"
+
+    yes: [:white_check_mark:]
+    no: [:x:]
+    noperms: "**[:x:]** You don't have permission to do that."
+
+    join: <:join:REDACTED>
+    quit: <:quit:REDACTED>
+
+    #cross_chat: channel with id "REDACTED"
+    cross_chat: channel with id "REDACTED"
+    staff_chat: channel with id "REDACTED"
+
+    cross_chat_id: REDACTED
+
+define new bot named "MyServer":
+    token: "REDACTED"
+    intents: default intents
+
+    policy: all 
+    compression: none 
+
+    auto reconnect: true 
+    force reload: false 
+
+    # Optional section code:
+    # Fired once the bot, and all guilds, are ready-to-use.
+    #on ready:
+        # </>
+    # Fired once a guild, and all its members, are ready-to-use
+    #on guild ready:
+        # </>
+    # Fired once the bot is about to be disconnected
+    #on shutdown:
+        # </>
+
+every 1 minute:
+    set presence of bot {@name} to watching "%size of players% players!"
+
+#script load:
+    #set presence of bot {@name} to watching "New Project!"
+
+on skript start:
+    post "**SERVER ONLINE**" to {@cross_chat}
+
+#on skript stop:
+#    post "**SERVER OFFLINE**" to {@cross_chat}
+
+on message receive:
+
+    set {_message} to event-message
+    replace "§" with "" in {_message}
+
+    if {_message} contains "REWARD":
+        purge event-message
+
+    else if discord id of event-channel = "{@cross_chat_id}":
+
+        event-member is not a discord bot
+        set {_roles} to "%all roles of event-member%"
+
+        {_roles} contains "owner":
+            set {_prefix} to "&8[&9Owner&8] &e"
+
+        else if {_roles} contains "moderator":
+            set {_prefix} to "&2[&aModerator&2] "
+
+        else if {_roles} contains "helper":
+            set {_prefix} to "&5[&dHelper&5] "
+
+        else if {_roles} contains "Overlord":
+            set {_prefix} to "&8[&c&lOverlord&8] &e"
+
+        else if {_roles} contains "Legend":
+            set {_prefix} to "&6[&e&lLegend&6] "
+
+        else if {_roles} contains "Patron":
+            set {_prefix} to "&9[&bPatron&9] &3"
+
+        else:
+            set {_prefix} to "&7"
+
+        {_message}'s length > 200:
+            reply with "{@no} You cannot send messages over **200** characters!"
+
+        else:
+            broadcast "&8[&9Discord&8] &7// %{_prefix}%%discord name of event-member% &8» &r%{_message}%" 
+
+    else if discord id of event-channel = "REDACTED":
+    
+        event-member is not a discord bot
+        send "&8[&9Staff-Discord&8] &e%discord name of event-member% &7» &r%{_message}%" to all players where [input's groups contains "Owner", "Mod" or "Helper"]
+
+on member join:
+    add role with id "REDACTED" to roles of event-member
+
+on message receive:
+    if event-string = "!players":
+        loop all players:
+            loop-value's groups doesn't contain "helper", "moderator", "admin" or "owner":
+                add loop-value to {_players::*}
+            else:
+                add loop-value to {_mods::*}
+        set {_num-players} to size of players
+        set {_message::*} to ":video_game: `PLAYERS ONLINE: %{_num-players}%`", "**Players:** %{_players::*}%", "**Moderators:** %{_mods::*}%"
+        delete {_message::3} if {_mods::*} isn't set
+        set {_message} to join {_message::*} by nl
+        reply with {_message}
+
+#on chat:
+#    set {_message} to message
+#    replace all "@" with "" in {_message}
+#    filter({_message}) is not set:
+#        wait 1 tick
+#        post "**%player%** » %uncolored {_message}%" to {@cross_chat}
+
+on join:
+    post "[{@join}] **%player%**" to {@cross_chat}
+    if player's prefix contains "Owner", "Mod" or "Helper":
+        post "[{@join}] **%player%**" to {@staff_chat} if player's prefix contains "Owner", "Mod" or "Helper"
+
+on quit:
+    post "[{@quit}] **%player%**" to {@cross_chat}
+    if player's prefix contains "Owner", "Mod" or "Helper":
+        post "[{@quit}] **%player%**" to {@staff_chat}

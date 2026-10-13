@@ -1,0 +1,234 @@
+function giveStartingPowers(lobby: text):
+    loop getPlayers({_lobby}):
+        set {_player} to loop-value
+        loop "uncommon", "rare" and "epic":
+            loop {powers-selected::%{_player}%::%loop-value-2%::*}:
+                set {_power-name} to loop-value-3
+                set {_stack-size} to {powerAttributes::%{_power-name}%::stack-size}
+                give {_stack-size} of getPower({_power-name}) to {_player}
+
+function gameIsRunning(lobby: text) :: boolean:
+    if any:
+        {king-of-the-hill::%{_lobby}%} = true
+        {free-for-all::%{_lobby}%} = true
+        {team-deathmatch::%{_lobby}%} = true
+    then:
+        return true
+    return false
+
+function resetPlayerMatch(p: player):
+
+    set {_lobby} to getLobby({_p})
+
+    clear inventory of {_p}
+    #set helmet of {_p} to stone button named "&7"
+    heal {_p}
+    set {_map} to {current-map::%{_lobby}%}
+    set gamemode of {_p} to adventure
+
+    set {_randNum} to random integer between 1 and 360
+    set {_v} to spherical vector radius 8, yaw {_randNum}, pitch 0
+    set {_centre} to random element of {island-centre::%{_lobby}%::%{_map}%::*}
+    set {_l} to location 0.5 above {_centre} ~ {_v}
+
+    while block 0.1 below {_l} != air:
+        if loop-counter > 50:
+            exit loop
+        #set {_randNum} to random integer between 1 and 360
+        #set {_v} to spherical vector radius 8, yaw {_randNum}, pitch 0
+        set {_l} to location 0.1 above {_l}
+
+    teleport {_p} to {_l}
+    set jump strength attribute of {_p} to 0
+    set movement speed attribute of {_p} to 0
+
+    play sound "entity.enderman.teleport" at volume 3 at pitch 1.2 at {_p}
+
+    loop 100 times:
+        if mod((loop-value) - 1, 20) = 0:
+            send title "&a%5 - ((loop-value) - 1) / 20%" to {_p}
+            play sound "block.note_block.didgeridoo" at volume 10 at pitch 1 + loop-value / 20 to {_p}
+        #if distance between {_temp-l} and {_p} > 0.05:
+        #    teleport {_p} to {_temp-l}
+        wait 1 tick
+
+    set jump strength attribute of {_p} to 0.42
+    set movement speed attribute of {_p} to 0.1
+
+    send title "&f&oFIGHT!" to {_p}
+    play sound "entity.ender_dragon.growl" at volume 10 at pitch 1 to {_p}
+
+function ticksToTimeLeft(ticks: number) :: text:
+    set {_minutes} to floor(0.05 * {_ticks} / 60)
+    set {_seconds} to mod(0.05 * {_ticks}, 60)
+    if {_seconds} < 10:
+        return "%{_minutes}%:0%ceil({_seconds})%"
+    return "%{_minutes}%:%ceil({_seconds})%"
+
+function getTimeLeftTicks(lobby: text) :: number:
+    return {-time-left::%{_lobby}%::%{-gamemode::%{_lobby}%}%} ? 0
+
+function getTimeLeftFormatted(lobby: text) :: text:
+    return ticksToTimeLeft(getTimeLeftTicks({_lobby}))
+
+function cleanUpPlayers(lobby: text, p: players):
+    clear inventory of {_p::*}
+    sidebar({_p::*})
+    if {-gamemode::%{_lobby}%} = "king-of-the-hill" or "team-deathmatch":
+        make {_p::*} not glow for all players
+
+function cleanUpMap(lobby: text, map: text):
+    loop {map-centre::%{_lobby}%::%{_map}%} and {island-centre::%{_lobby}%::%{_map}%::*}:
+        kill all markers in radius 64 of loop-value
+
+function cleanUpCurrentMap(lobby: text):
+    cleanUpMap({_lobby}, getCurrentMap({_lobby}))
+
+local function countdown(p: player):
+    loop 10 times:
+        set {_n} to 11 - loop-value
+        if {_n} > 6:
+            send title "&e%{_n}%" to {_p} for 20 ticks
+        else if {_n} > 3:
+            send title "&6%{_n}%" to {_p} for 20 ticks
+        else:
+            send title "&c%{_n}%" to {_p} for 20 ticks
+        send subtitle "&fseconds left..." to {_p} for 20 ticks
+        play sound "block.note_block.didgeridoo" at volume 3 at pitch 1 + loop-value / 10 to {_p}
+        play sound "block.note_block.chime" at volume 3 at pitch 1 + loop-value / 10 to {_p}
+        play sound "block.note_block.hat" at volume 3 at pitch 1.25 to {_p}
+        wait 10 ticks
+        play sound "block.note_block.hat" at volume 3 at pitch 0.75 to {_p}
+        wait 10 ticks
+
+function startMatchCountdown(p: players):
+    loop {_p::*}:
+        countdown(loop-value)
+
+function sendWinnerTitle(p: players):
+    set {_sprite} to object text component with atlas "gui" with sprite "player_list/remove_operator"
+    set {_text} to "&eYOU WON!"
+    send title component {_sprite} to {_p::*} for 20 ticks
+    send subtitle {_text} to {_p::*} for 20 ticks
+    play sound "entity.player.levelup" at volume 3 at pitch 1.2 to {_p::*} 
+
+function sendLoserTitle(p: players):
+    set {_sprite} to object text component with atlas "gui" with sprite "player_list/make_operator"
+    set {_text} to "&cYOU LOST!"
+    send title component {_sprite} to {_p::*} for 20 ticks
+    send subtitle {_text} to {_p::*} for 20 ticks
+    play sound "entity.iron_golem.death" at volume 3 at pitch 1.2 to {_p::*}
+
+function warnMinutesLeft(p: players, minutes: number):
+    send title "&e%{_minutes}%" to {_p::*} for 20 ticks
+    send subtitle "&fminutes left..." to {_p::*} for 20 ticks
+    play sound "entity.elder_guardian.curse" at volume 10 at pitch 1.5 to {_p::*}
+
+function getLobby(p: player) :: text:
+    world of {_p} = "lobbies"
+    return "lobby%ceil(0.5 + (x-coord of {_p}) / 1000)%"
+
+function lobbyIsOccupied(lobby: text) :: boolean:
+    if (size of getPlayers({_lobby})) > 0:
+        return true
+    return false
+
+function lobbyIsFull(lobby: text) :: boolean:
+    if (size of getPlayers({_lobby})) >= 12:
+        return true
+    return false
+
+function getFirstOccupiedLobby(start: number = 1) :: text:
+    loop integers between 1 and 5:
+        set {_lobby} to "lobby%loop-counter%"
+        if lobbyIsOccupied({_lobby}) = true:
+            return {_lobby}
+
+function getBestLobby() :: text:
+    if size of all players = 1:
+        return "lobby1"
+    loop integers between 1 and 5:
+        set {_lobby} to "lobby%loop-counter%"
+        if all:
+            lobbyIsOccupied({_lobby}) = true
+            lobbyIsFull({_lobby}) = false
+        then:
+            return {_lobby}
+    loop integers between 1 and 5:
+        set {_lobby} to "lobby%loop-counter%"
+        if lobbyIsOccupied({_lobby}) = false:
+            return {_lobby}
+
+function getPlayers(lobby: text) :: players:
+    loop all players:
+        if all:
+            getLobby(loop-player) = {_lobby}
+            {-is-spectating::%loop-player%} != true
+        then:
+            add loop-player to {_players::*}
+    return {_players::*}
+
+function getPlayersInLobby(lobby: text) :: players:
+    loop all players:  
+        if getLobby(loop-player) = {_lobby}:
+            add loop-player to {_players::*}
+    return {_players::*}
+
+function getPlayersInSameLobby(p: player) :: players:
+    return all players where [getLobby(input) = getLobby({_p})]
+
+function getCurrentMap(lobby: text) :: text:
+    return {current-map::%{_lobby}%}
+
+function getMapCentre(lobby: text, map: text) :: location:
+    return {map-centre::%{_lobby}%::%{_map}%}
+
+function getCurrentMapCentre(lobby: text) :: location:
+    return {map-centre::%{_lobby}%::%getCurrentMap({_lobby})%}
+
+function getStat(p: player, lobby: text, gamemode: text, stat: text) :: number:
+    return {-%{_stat}%::%{_lobby}%::%{_gamemode}%::%{_p}%}
+
+# TEAM FUNCTIONS
+
+function addToTeam(p: entity, side: text):
+    add {_side} to groups of {_p}
+    set {-side::%{_p}%} to {_side}
+    #add {_p} to team named {_side}
+    if {_side} = "blue":
+        make {_p} glow blue for all players
+    else if {_side} = "blue":
+        make {_p} glow red for all players
+
+function removeFromTeam(p: entity, side: text):
+    remove {_side} from groups of {_p}
+    delete {-side::%{_p}%}
+    make {_p} not glow for all players
+
+function clearTeam(lobby: text, side: text):
+    loop getPlayers({_lobby}) where [groups of input contains {_side}]:
+        removeFromTeam(loop-value, {_side})
+    #clear team entries of team named {_side}
+
+function getPlayerSide(p: entity) :: text:
+    if any:
+        groups of {_p} contains "blue"
+        {-side::%{_p}%} = "blue"
+    then:
+        return "blue"
+    else if any:
+        groups of {_p} contains "red"
+        {-side::%{_p}%} = "red"
+    then:
+        return "red"
+
+function onSameSide(p1: entity, p2: entity) :: boolean:
+    if any:
+        getPlayerSide({_p1}) = getPlayerSide({_p2})
+        {_p1} = {_p2}
+    then:
+        return true
+    return false
+
+function getPlayersOnTeam(lobby: text, side: text) :: players:
+    return (getPlayers({_lobby}) where [groups of input contains "%{_side}%"])

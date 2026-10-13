@@ -1,0 +1,157 @@
+options:
+    trail-lifetime: 20
+    trail-scale: 1.5
+    speed: 1
+    duration: 20
+
+function drillSpawnTrailBlock(l: location):
+
+    if block at {_l} != air:
+        set {_l} to location 1 above {_l}
+
+    else:
+        while {except::*} contains block 1 below {_l}:
+            set {_l} to location 1 below {_l}
+            if loop-counter > 2:
+                stop
+
+    loop 2 times:
+        set {_rand::%loop-value%} to (random integer between -100 and 100) / 100
+
+    set {_v} to vector({_rand::1}, 0, {_rand::2})
+
+    spawn block display at location {@trail-scale} below {_l} ~ {_v}:
+        set {_display} to event-entity
+
+        set {_type} to type of block 1 below {_l}
+        set block data of {_display} to "%{_type}%" parsed as block data
+
+        set display scale of {_display} to vector(0, 0, 0)
+        set display translation of {_display} to vector({@trail-scale} * -0.5, 0, {@trail-scale} * -0.5)
+        set interpolation duration of {_display} to 1 ticks
+        set teleport duration of {_display} to 1 ticks
+        set sky light override of {_display} to 15
+
+        set {_angle} to (random integer between -300 and 300) / 10
+        rotate {_display} around vector(0, 1, 0) by {_angle} degrees
+        rotate {_display} around vector(1, 0, 0) by {_angle} degrees
+
+    play sound (break sound of {_type}) at volume 1.5 at pitch 1.5 at {_l}
+
+    loop 5 times:
+        set {_prog} to loop-value / 5
+        set {_n} to easeInOutCubic({_prog})
+        set {_scale} to {@trail-scale} * {_n}
+
+        set interpolation delay of {_display} to 0 ticks
+        set transformation scale of {_display} to vector({_scale}, {_scale}, {_scale})
+
+        wait 1 tick
+
+    wait ({@trail-lifetime} + 10 + {_n}) * 1 ticks # +30 is now +10 to accomodate for the fadein/out loops
+
+    loop 10 times:
+        set {_prog} to loop-value / 10
+        set {_n} to 1 - easeInBack({_prog})
+        set {_scale} to {@trail-scale} * {_n}
+
+        set interpolation delay of {_display} to 0 ticks
+        set transformation scale of {_display} to vector({_scale}, {_scale}, {_scale})
+
+        wait 1 tick
+
+    kill {_display}
+    draw 5 {_type} block particle with offset vector(1, 1, 1) at {_l}
+    play sound (break sound of {_type}) at volume 1.5 at pitch 0.8 at {_l}
+
+function drill(p: player):
+
+    set {-power-active::%{_p}%::drill} to true
+    set {-powers-locked::%{_p}%} to true
+
+    #loop getLivingEntities({_p}, location of {_p}, 2.5) where [input != {_p}]:
+    #    set {_ent} to loop-value
+    #    makeDamage({_p}, {_ent}, {powerAttributes::drill::damage}, "drill;enter")
+    #    applyPush({_ent}, (normalized vector from {_p} to {_ent}) * 1.25, {_p}, "drill;enter")
+
+    loop 72 times:
+        set {_v} to spherical vector radius 3, yaw loop-value * 5, pitch 0
+        draw 0 smoke particle with offset {_v} with particle speed 0.5 at location 0.5 above {_p} ~ {_v}
+
+    if {-transformed::%{_p}%::magic-stew} != true:
+        apply potion effect of invisibility to {_target} for eternity:
+            hide particles
+    else:
+        set {_mooshroom} to {-mooshroom::%{_p}%}
+        apply potion effect of invisibility to {_mooshroom} for eternity:
+            hide particles
+
+    applyInvis({_p})
+
+    play sound "item.mace.smash_ground" at volume 3 at pitch 1.5 at {_p}
+
+    set {_prev-step-height} to step height attribute of {_p}
+    set step height attribute of {_p} to 1.2
+
+    loop {@duration} times:
+
+        if hasDied({_p}) = true:
+            exit loop
+
+        set velocity of {_p} to vector(0, y component of velocity of {_p}, 0)
+        if {except::*} contains block 0.125 below {_p}:
+            set y component of velocity of {_p} to -5
+        #else if {except::*} does not contain block {@speed} horizontally infront of {_p}:
+        #    set y component of velocity of {_p} to 1
+
+        #set {_next-block} to block 1 below block {@speed} horizontally infront of {_p}
+        #if {except::*} does not contain {_next-block}:
+        #    push {_p} horizontally forwards at speed {@speed}
+
+        push {_p} horizontally forwards at speed {@speed}
+        drillSpawnTrailBlock(block 1 below {_p})
+        groundShake(block 1 below {_p})
+
+        loop getLivingEntities({_p}, location of {_p}, 2.5) where [input != {_p}]:
+            set {_ent} to loop-value-2
+
+            if time since {-hit::%{_p}%::%{_ent}%::drill} is set:
+                if time since {-hit::%{_p}%::%{_ent}%::drill} < 1 second:
+                    continue
+
+            set {-hit::%{_p}%::%{_ent}%::drill} to now
+
+            makeDamage({_p}, {_ent}, {powerAttributes::drill::damage}, "drill")
+            applyPush({_ent}, (normalized vector from {_p} to {_ent}) * 1.25, {_p}, "drill;travel")
+
+        #play sound "block.netherrack.break" at volume 2 at pitch 0.8 at {_p}
+        play sound "entity.iron_golem.attack" at volume 1.5 at pitch 2 at {_p}
+        play sound "block.piston.contract" at volume 1.5 at pitch 2 at {_p}
+        wait 1 tick
+
+    set step height attribute of {_p} to {_prev-step-height}
+
+    set {_impact-l} to location of {_p}
+    
+    #loop getLivingEntities({_p}, {_impact-l}, 2.5) where [input != {_p}]:
+    #    set {_ent} to loop-value
+    #    makeDamage({_p}, {_ent}, {powerAttributes::drill::damage}, "drill;exit")
+    #    applyPush({_ent}, (normalized vector from {_p} to {_ent}) * 1.25, {_p}, "drill;exit")
+
+    #play sound "entity.horse.armor" at volume 3 at pitch 1.2 at {_impact-l}
+    play sound "entity.iron_golem.death" at volume 3 at pitch 2 at {_impact-l}
+    play sound "entity.generic.explode" at volume 3 at pitch 1.2 at {_impact-l}
+    draw 1 explosion particle at {_impact-l}
+
+    removeInvis({_p})
+
+    fallingDebris({_impact-l}, 3, 0.75)
+
+    loop 36 times:
+        set {_v} to spherical vector radius 3, yaw loop-value * 10, pitch 0
+        draw 0 smoke particle with offset {_v} with particle speed 0.5 at location 0.5 above {_impact-l} ~ {_v}
+
+    push {_p} up at speed 0.5
+
+    delete {-power-active::%{_p}%::drill}
+    delete {-powers-locked::%{_p}%}

@@ -1,0 +1,99 @@
+options:
+    carDistance: 48
+    carDuration: 20
+
+function trafficLightsSpawnCar(p: player, l: location):
+
+    set {_l} to location {@carDistance} * 0.5 infront {_l}
+    set {_car-displays::*} to buildingToDisplay({structure::car::1}, {structure::car::2}, {structure::car::centre}, 1.25, {_l})
+    set {_root} to {_car-displays::1}
+
+    loop {_car-displays::*}:
+        set sky light override of loop-value to 15
+
+    play sound "entity.blaze.shoot" at volume 3 at pitch 0.8 at {_l}
+    play sound "entity.breeze.shoot" at volume 3 at pitch 1 at {_l}
+
+    loop {@carDuration} times:
+        set {_temp-l} to location loop-value * {@carDistance} / {@carDuration} behind {_l}
+        teleport {_root} to {_temp-l}
+
+        loop getLivingEntities({_p}, {_temp-l}, 4.5) where [input != {_p}]:
+
+            set {_ent} to loop-value-2
+            if time since {-hit::%{_p}%::%{_ent}%::car} is set:
+                if time since {-hit::%{_p}%::%{_ent}%::car} < 1 seconds:
+                    continue
+
+            set {-hit::%{_p}%::%{_ent}%::car} to now
+            makeDamage({_p}, {_ent}, {powerAttributes::traffic-lights::damage}, "traffic-lights")
+
+            applyPush({_ent}, (normalized vector from yaw (yaw of {_temp-l} + 180) and pitch 0) * 1.25 + vector(0, 0.5, 0), {_p}, "traffic-lights")
+
+            draw 10 piston block particle at {_ent}
+            draw 25 crit particle with offset vector(2, 2, 2) with particle speed 0.5 at {_ent}
+            draw 3 cloud particle with offset vector(2, 2, 2) with particle speed 0.5 at {_ent}
+
+            play sound "entity.player.attack.knockback" at volume 3 at pitch 1.2 at {_ent}
+            play sound "entity.zombie.attack_iron_door" at volume 3 at pitch 1.2 at {_ent}
+            play sound "item.enchant.thorns.hit" at volume 2 at pitch 1 at {_ent}
+
+        play sound "block.piston.contract" at volume 2 at pitch 2 - loop-value / {@carDuration}  at {_temp-l}
+        play sound "block.vault.close_shutter" at volume 1.5 at pitch 1.5 - loop-value / {@carDuration} at {_temp-l}
+        wait 1 tick
+
+    kill {_root}
+
+function trafficLights(p: player):
+    
+    set {-power-active::%{_p}%::traffic-lights} to true
+
+    set {_target} to getTargetLocation({_p}, 64)
+    set {_yaw} to yaw of {_p}
+    set yaw of {_target} to yaw of {_p}
+
+    set {_traffic-lights-l} to location 2 infront and 0.375 above {_target}
+    set {_traffic-lights-displays::*} to buildingToDisplay({structure::traffic-lights::1}, {structure::traffic-lights::2}, {structure::traffic-lights::centre}, 0.75, {_traffic-lights-l})
+    set {_traffic-lights-root} to {_traffic-lights-displays::1}
+
+    loop {_traffic-lights-displays::*}:
+        set sky light override of loop-value to 15
+
+    rotate({_traffic-lights-root}, (yaw of {_p}), 0)
+    set {_lamp-displays::*} to {_traffic-lights-displays::*} where [block data of input = redstone lamp]
+
+    draw 5 poof particle with offset vector(0.5, 0.5, 0.5) with particle speed 0.5 at {_traffic-lights-l}
+    play sound "entity.horse.armor" at volume 3 at pitch 1.75 at {_traffic-lights-l}
+
+    loop 3 times:
+        play sound "block.note_block.bit" at volume 3 at pitch 1 + loop-value / 3 at {_traffic-lights-l}
+        play sound "block.note_block.didgeridoo" at volume 3 at pitch 1 + loop-value / 3 at {_traffic-lights-l}
+        set block data of {_lamp-displays::*} to redstone_lamp[lit=true]
+        wait 3 ticks
+        set block data of {_lamp-displays::*} to redstone_lamp[lit=false]
+        wait 3 ticks
+
+    set {_car-l} to location 0.5 above {_target}
+    set yaw of {_car-l} to {_yaw} - 90
+    trafficLightsSpawnCar({_p}, {_car-l})
+
+    set block data of {_lamp-displays::*} to redstone_lamp[lit=true]
+    play sound "block.amethyst_block.resonate" at volume 3 at pitch 1.5 at {_traffic-lights-l}
+
+    wait {@carDuration} ticks
+
+    delete {-power-active::%{_p}%::traffic-lights}
+    wait 20 ticks
+
+    set block data of {_lamp-displays::*} to redstone_lamp[lit=false]
+
+    loop {_traffic-lights-displays::*}:
+        set view range of loop-value to 0
+        set {_v} to display translation of loop-value
+        rotate {_v} around y-axis by (yaw of {_car-l})
+        set {_type} to block data of loop-value
+        draw 5 {_type} block particle with offset vector(0.5, 0.5, 0.5) at loop-value ~ {_v}
+        play sound (break sound of {_type}) at volume 2 at pitch 0.8 at loop-value
+        wait 1 tick
+
+    kill {_traffic-lights-root}

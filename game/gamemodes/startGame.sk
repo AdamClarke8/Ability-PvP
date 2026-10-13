@@ -1,0 +1,103 @@
+on script load:
+	set {-reset-games} to true
+	wait 20 ticks
+	delete {-reset-games}
+	if all:
+		{-selection-in-progress::lobby1} != true
+		{-gamemode::lobby1} is not set
+		{-showing-results::lobby1} != true
+	then:
+		startGame("lobby1")
+	loop integers between 2 and 5:
+		set {_lobby} to "lobby%loop-value%"
+		if all:
+			{-selection-in-progress::lobby1} != true
+			{-gamemode::lobby1} is not set
+			{-showing-results::lobby1} != true
+			lobbyIsOccupied({_lobby}) = true
+		then:
+			startGame({_lobby})
+
+local function spawnTitleDisplay(l: location) :: entity:
+	spawn text display at location 3 above {_l}:
+		set {_title-display} to event-entity
+		set text of {_title-display} to "&fWAITING FOR 2 PLAYERS..."
+		set display scale of {_title-display} to vector(5, 5, 5)
+		set line width of {_title-display} to 1000
+		set color of {_title-display} to rgb(0, 0, 0, 0)
+		set billboard of {_title-display} to center
+	return {_title-display}
+
+function startGame(lobby: text):
+	set {_radius} to 7
+	set {_centre} to getCurrentMapCentre({_lobby})
+
+	set {_l} to location 0.5 above block at {_centre} with yaw 0 with pitch 0
+
+	set {_title-display} to spawnTitleDisplay({_l})
+	set {_ring-display} to spawnTextRing({_l}, "&b", {_radius})
+
+	broadcast "&aStarted game in %{_lobby}%."
+
+	while size of getPlayers({_lobby}) > 0:
+		if {-reset-games} = true:
+			exit loop
+		if all:
+			size of getPlayers({_lobby}) >= 2
+			{-selection-in-progress::%{_lobby}%} != true
+			gameIsRunning({_lobby}) != true
+		then:
+
+			wait 20 ticks
+
+			size of getPlayers({_lobby}) >= 2
+
+			kill {_title-display}
+			kill {_ring-display}
+
+			startSelection({_lobby})
+			wait 5 ticks
+			while {-selection-in-progress::%{_lobby}%} = true:
+				wait 1 tick
+			wait 5 ticks
+
+			while gameIsRunning({_lobby}) = true:
+				wait 1 tick
+			wait 5 ticks
+			while {-gamemode::%{_lobby}%} is set:
+				wait 1 tick
+			wait 5 ticks
+			while {-showing-results::%{_lobby}%} = true:
+				wait 1 tick
+			wait 5 ticks
+
+			set {_centre} to getCurrentMapCentre({_lobby})
+
+			set {_centre} to getCurrentMapCentre({_lobby})
+			set {_l} to location 0.5 above block at {_centre} with yaw 0 with pitch 0
+
+			set {_title-display} to spawnTitleDisplay({_l})
+			set {_ring-display} to spawnTextRing({_l}, "&b", {_radius})
+
+		set interpolation delay of {_ring-display} to 0 ticks
+		set yaw of {_ring-display} to loop-counter * 3
+
+		send action bar "&fSee where others are playing: /switch-lobby" to getPlayersInLobby({_lobby})
+
+		if mod(loop-counter, 10) = 0:
+			set {_n} to mod(loop-counter, 3) + 1
+			set {_text} to "&fWAITING FOR 2 PLAYERS"
+			loop {_n} times:
+				set {_text} to "%{_text}%&f."
+			set text of {_title-display} to {_text}
+
+		wait 1 tick
+
+	#broadcast "&b%size of getPlayers({_lobby})%"
+	kill {_ring-display}
+	kill {_title-display}
+
+	delete {-game-title-display::%{_lobby}%}
+	delete {-game-ring-display::%{_lobby}%}
+
+	broadcast "&aEnded game in %{_lobby}%."

@@ -1,0 +1,71 @@
+options:
+	blocks: stripped oak wood, stripped birch wood, oak wood, birch wood, stripped jungle wood and acacia wood
+	lifetime: 100
+	height: 4
+	width: 8
+	delay: 2
+
+local function fallingBlockLoop(falling-block: entity, item: item type):
+	while {_falling-block} is alive:
+		wait 1 tick
+	set {_temp-l} to location of {_falling-block}
+	draw 5 {_item} block particle with offset vector(0.5, 0.5, 0.5) at {_temp-l}
+	play sound (break sound of {_item}) at volume 1.25 at pitch 1 at {_temp-l}
+
+local function setBlockTemp(l: location, new-data: block data):
+	{except::*} contains type of block at {_l}
+	set {_orig-data} to block data of block at {_l}
+	set block at {_l} to {_new-data}
+
+	wait {@lifetime} ticks
+
+	#block data of block at {_l} = {_new-data}
+
+	skbee spawn falling {_new-data} at {_l}
+	set {_falling-block} to spawned falling block
+	set generic scale attribute of {_falling-block} to 0.8
+	add nbt compound from "{DropItem:1b,CancelDrop:1b}" to nbt compound of {_falling-block}
+	fallingBlockLoop({_falling-block}, type of block at {_l})
+	set block at {_l} to {_orig-data}
+
+	wait 60 ticks
+	kill {_falling-block}
+
+function barricade(p: player):
+
+	set {_l} to location 3 horizontally infront of {_p} with pitch 0
+	play sound "entity.horse.armor" at volume 3 at pitch 1.2 at {_l}
+	play sound "entity.villager.work_fletcher" at volume 3 at pitch 0.8 at {_l}
+
+	draw 10 happy villager particle with offset vector(2, 2, 2) at {_l}
+
+	loop 36 times:
+		set {_v} to spherical vector radius 3, yaw loop-value * 10, pitch 0
+		set {_draw-l} to location 0.25 above {_l} ~ {_v}
+		draw 0 campfire cosy smoke particle with offset {_v} with particle speed 0.25 at {_draw-l}
+		draw 0 poof particle with offset {_v} with particle speed 0.25 at {_draw-l}
+
+	loop {@height} times:
+		set {_temp-l} to location -1 + loop-value above {_l}
+
+		loop getLivingEntities({_p}, {_temp-l}, 3) where [input != {_p}]:
+			set {_ent} to loop-value-2
+			{_entities::*} does not contain {_ent}
+			add {_ent} to {_entities::*}
+			makeDamage({_p}, {_ent}, {powerAttributes::barricade::damage}, "barricade")
+			applyPush({_ent}, (vector from yaw (yaw of {_l}) and pitch (pitch of {_l})) * vector(1.5, 1.5, 1.5), {_p}, "bulwark")
+			draw 10 crit particle with offset vector(1, 1, 1) with particle speed 0.25 at head of {_ent}
+			play sound "enchant.thorns.hit" at volume 3 at pitch 1.2 at {_ent}
+
+		loop blocks between location ({@width} / 2) left of {_temp-l} and location ({@width} / 2) right of {_temp-l}:
+			{except::*} contains type of block at loop-value-2
+			set {_type} to random element of {@blocks}
+			setBlockTemp(loop-value-2, "%{_type}%" parsed as block data)
+			#play sound "block.wooden_door.open" at volume 2 at pitch 0.5 + (loop-value-1) / {@height} at {_l}
+			play sound "block.wood.place" at volume 2 at pitch 0.5 + (loop-value-1) / {@height} at {_l}
+			play sound "item.axe.strip" at volume 2 at pitch 0.5 + (loop-value-1) / {@height} at {_l}
+		wait {@delay} ticks
+
+	wait "%{@lifetime} - 2 * ({@height} - 1)% ticks" parsed as timespan
+
+	play sound "entity.phantom.flap" at volume 3 at pitch 0.8 at {_p}

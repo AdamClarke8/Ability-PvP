@@ -1,0 +1,90 @@
+on script load:
+
+	# GAME WORLD (TESTING)
+
+	set {map-centre::game::test-map} to location(108.5, 72.5, 4.5, "game")
+	set {map-centre::game::plains} to location(51.5, 66.5, -217.5, "game")
+
+	set {map-centre::game::mushroom} to location(239.5, 155.5, -339.5, "game")
+	set {island-centre::game::mushroom::1} to location(216.5, 154.5, -421.5, "game")
+	set {island-centre::game::mushroom::2} to location(310.5, 154.5, -324.5, "game")
+	set {island-centre::game::mushroom::3} to location(257.5, 153.5, -249.5, "game")
+	set {island-centre::game::mushroom::4} to location(162.5, 154.5, -290.5, "game")
+
+	set {map-centre::game::desert} to location(240.5, 154.5, -1339.5, "game")
+	set {island-centre::game::desert::1} to location(318.5, 154.5, -1324.5, "game")
+	set {island-centre::game::desert::2} to location(272.5, 153.5, -1261.5, "game")
+	set {island-centre::game::desert::3} to location(240.5, 154.5, -1407.5, "game")
+	set {island-centre::game::desert::4} to location(140.5, 153.5, -1331.5, "game")
+
+	# LOBBY WORLDS (GAMEPLAY)
+
+	loop integers between 1 and 5:
+		set {_n} to loop-value
+		set {map-centre::lobby%{_n}%::mushroom} to location(0.5, 64.5, 0.5, "lobbies")
+		set {island-centre::lobby%{_n}%::mushroom::1} to location(-22.5, 63.5, -81.5, "lobbies")
+		set {island-centre::lobby%{_n}%::mushroom::2} to location(71.5, 63.5, 15.5, "lobbies")
+		set {island-centre::lobby%{_n}%::mushroom::3} to location(18.5, 62.5, 90.5, "lobbies")
+		set {island-centre::lobby%{_n}%::mushroom::4} to location(-76.5, 63.5, 49.5, "lobbies")
+
+		set {map-centre::lobby%{_n}%::desert} to location(0.5, 64.5, -999.5, "lobbies")
+		set {island-centre::lobby%{_n}%::desert::1} to location(78.5, 64.5, -984.5, "lobbies")
+		set {island-centre::lobby%{_n}%::desert::2} to location(32.5, 63.5, -921.5, "lobbies")
+		set {island-centre::lobby%{_n}%::desert::3} to location(0.5, 64.5, -1067.5, "lobbies")
+		set {island-centre::lobby%{_n}%::desert::4} to location(-99.5, 63.5, -991.5, "lobbies")
+
+		set {map-centre::lobby%{_n}%::ice} to location(0.5, 64.5, -1999.5, "lobbies")
+		set {island-centre::lobby%{_n}%::ice::1} to location(109.5, 63.5, -1998.5, "lobbies")
+		set {island-centre::lobby%{_n}%::ice::2} to location(4.5, 63.5, -2115.5, "lobbies")
+		set {island-centre::lobby%{_n}%::ice::3} to location(-117.5, 64.5, -2002.5, "lobbies")
+		set {island-centre::lobby%{_n}%::ice::4} to location(-0.5, 64.5, -1877.5, "lobbies")
+
+		loop indices of {map-centre::lobby%{_n}%::*}:
+			set {_map} to loop-value-2
+			set {map-centre::lobby%{_n}%::%{_map}%} to location ({_n} - 1) * 1000 east of {map-centre::lobby%{_n}%::%{_map}%}
+
+		loop indices of {island-centre::lobby%{_n}%::*}:
+			set {_map} to loop-value-2
+			loop indices of {island-centre::lobby%{_n}%::%{_map}%::*}:
+				set {_idx} to loop-value-3
+				set {island-centre::lobby%{_n}%::%{_map}%::%{_idx}%} to location ({_n} - 1) * 1000 east of {island-centre::lobby%{_n}%::%{_map}%::%{_idx}%}
+
+		if {current-map::lobby%{_n}%} is not set:
+			set {current-map::lobby%{_n}%} to "mushroom"
+
+command /testt:
+	permission: op
+	trigger:
+		set {_x} to x-coord of {map-centre::game::desert}
+		set {_y} to y-coord of {map-centre::game::desert}
+		set {_z} to z-coord of {map-centre::game::desert}
+		set {_v1} to vector({_x}, {_y}, {_z})
+		loop integers between 1 and 4:
+			set {_n} to loop-value
+
+			set {_x} to x-coord of {island-centre::game::desert::%{_n}%}
+			set {_y} to y-coord of {island-centre::game::desert::%{_n}%}
+			set {_z} to z-coord of {island-centre::game::desert::%{_n}%}
+			set {_v2} to vector({_x}, {_y}, {_z})
+
+			set {_v3} to {_v2} - {_v1}
+
+			set {_l} to {map-centre::lobby1::desert} ~ {_v3}
+			set {_t} to text component from "location(%x-coord of {_l}%, %y-coord of {_l}%, %z-coord of {_l}%, ""lobby1"")"
+			add click event to copy "location(%x-coord of {_l}%, %y-coord of {_l}%, %z-coord of {_l}%, ""lobby1"")" to clipboard to {_t}
+			broadcast component {_t}
+
+command /setrgflags:
+	permission: op
+	trigger:
+		loop integers between 1 and 5:
+			set {_n} to loop-value
+			execute console command "/rg flag __global__ -w ""lobbies"" build deny"
+			execute console command "/rg flag __global__ -w ""lobbies"" use allow"
+			execute console command "/rg flag __global__ -w ""lobbies"" interact allow"
+			execute console command "/rg flag __global__ -w ""lobbies"" pvp allow"
+			execute console command "/rg flag __global__ -w ""lobbies"" tnt deny"
+			execute console command "/rg flag __global__ -w ""lobbies"" other-explosion deny"
+			execute console command "/rg flag __global__ -w ""lobbies"" deny-message -e"
+			execute console command "/rg flag __global__ -w ""lobbies"" entry-deny-message -e"
+			execute console command "/rg flag __global__ -w ""lobbies"" exit-deny-message -e"

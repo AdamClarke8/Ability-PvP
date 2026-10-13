@@ -1,0 +1,87 @@
+function giantSnowball(p: player):
+
+    set {-power-active::%{_p}%::giant-snowball} to true
+    set {-powers-locked::%{_p}%} to true
+
+    set {_l} to location 0.5 above {_p}
+
+    spawn item display at location 0.8 above {_l}:
+        set {_snowball} to event-entity
+        set item of {_snowball} to {heads::snowball}
+        set display scale of {_snowball} to vector(6, 6, 6)
+        set display translation of {_snowball} to vector(0, 1.5, 0)
+        set teleport duration of {_snowball} to 1 tick
+        set interpolation duration of {_snowball} to 1 tick
+
+    loop 36 times:
+        set {_v} to spherical vector radius 3, yaw loop-value * 10, pitch 0
+        draw 0 poof particle with offset {_v} with particle speed 0.25 at {_l} ~ {_v}
+        draw 0 poof particle with offset {_v} with particle speed 0.25 at {_l} ~ {_v}
+
+    play sound "entity.horse.armor" at volume 3 at pitch 1.2 at {_l}
+    play sound "entity.illusioner.cast_spell" at volume 3 at pitch 1.2 at {_l}
+
+    applyInvis({_p})
+
+    startDuration({_p}, "giant-snowball", 100 ticks)
+
+    set {_prev-step-height} to step height attribute of {_p}
+    set step height attribute of {_p} to 1.2
+
+    loop 100 times:
+
+        if hasDied({_p}) = true:
+            exit loop
+
+        set {_angle} to 18
+
+        set interpolation delay of {_snowball} to 0 ticks
+        set {_v} to display translation of {_snowball}
+        rotate {_v} around vector(1, 0, 0) by {_angle} degrees
+        set display translation of {_snowball} to {_v}
+        rotate {_snowball} around vector(1, 0, 0) by {_angle} degrees
+    
+        teleport {_snowball} to location 1.3 above {_p}
+        set x component of velocity of {_p} to 0
+        set z component of velocity of {_p} to 0
+        push {_p} horizontally forwards at speed 0.75
+
+        set {_tempLoc} to location 1.3 above {_p}
+
+        if mod(loop-counter, 5) = 0:
+            groundShakeArea(location 1.3 below {_tempLoc}, 2)
+
+        draw 5 glow particle with offset vector(2, 2, 2) with particle speed 0.25 at {_tempLoc}
+
+        play sound "block.snow.break" at volume 2 at pitch 0.8 + loop-counter / 200 at {_p}
+        play sound "entity.breeze.charge" at volume 0.5 at pitch 1 + loop-counter / 200 at {_p}
+
+        loop getLivingEntities({_p}, {_tempLoc}, 3.5 * 1.005 ^ loop-counter) where [input != {_p}]:
+
+            set {_ent} to loop-value-2
+            time since {-hit::%{_p}%::%{_ent}%::giant-snowball} is set:
+                time since {-hit::%{_p}%::%{_ent}%::giant-snowball} < 1 seconds:
+                    continue
+    
+            set {-hit::%{_p}%::%{_ent}%::giant-snowball} to now
+            makeDamage({_p}, {_ent}, {powerAttributes::giant-snowball::damage}, "giant-snowball")
+
+            applyPush({_ent}, (normalized vector from {_p} to {_ent}) + vector(0, 0.75, 0), {_p}, "giant-snowball")
+            play sound "entity.player.attack.knockback" at volume 3 at pitch 1.2 at {_ent}
+            play sound "entity.snow_golem.death" at volume 2 at pitch 1.5 at {_ent}
+
+        set display scale of {_snowball} to display scale of {_snowball} * 1.005
+        set display translation of {_snowball} to display translation of {_snowball} * 1.005
+        wait 1 tick
+
+    set step height attribute of {_p} to {_prev-step-height}
+
+    delete {-power-active::%{_p}%::giant-snowball}
+    delete {-powers-locked::%{_p}%}
+
+    kill {_snowball}
+    removeInvis({_p})
+
+    draw 50 snow block particle with offset vector(2, 2, 2) at {_tempLoc}
+    play sound "entity.snow_golem.death" at volume 2 at pitch 0.8 at {_tempLoc}
+    play sound "block.fire.extinguish" at volume 2 at pitch 1.2 at {_tempLoc}

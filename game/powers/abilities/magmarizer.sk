@@ -1,0 +1,188 @@
+options:
+    section-size: 2
+    speed: 2.5
+    range: 64
+    material: shroomlight
+    magma-width: 1
+    glass-width: 1.25
+
+function magmarizerSpawnBody(l: location, material: block data = {@material}, length: number = {@section-size}, width: number = 1, pitch: number = 0) :: entity:
+    set {_orig-scale} to vector({_width}, {@section-size}, {_width})
+    set {_orig-translation} to vector(-0.5 * {_width}, -1 * {_length}, -0.5 * {_width})
+
+    spawn block display at {_l}:
+        set {_body} to event-entity
+        set block data of {_body} to {_material}
+        set display scale of {_body} to {_orig-scale}
+        set display translation of {_body} to {_orig-translation}
+        set teleport duration of {_body} to 1 tick
+        set interpolation duration of {_body} to 1 tick
+        set sky light override of {_body} to 15
+        rotateOnRollAxis({_body}, {_pitch} - 90, vector(1, 0, 0))
+    return {_body}
+
+function magmarizerBeamUpdate(body: entities, l: location, pitch: number, prev-pitch: number, new-width: number, length: number) :: entities:
+    loop {_body::*}:
+        # force teleport, to allow function to return value
+        force teleport loop-value to {_l}
+        set {_new-length} to min({@section-size}, {_length} - (-2 + loop-counter-2) * {@section-size})
+        #set {_new-length} to {@section-size}
+        if {_new-length} < 0:
+            clear {_body::%loop-counter%}
+            kill loop-value
+            #subtract 1 from {_num-bodies}
+            continue
+
+        rotateOnRollAxis(loop-value, {_prev-pitch} * -1 + 90, vector(1, 0, 0))
+        set y component of display scale of loop-value to {_new-length}
+        set y component of display translation of loop-value to (1 - loop-counter) * {@section-size} + {_new-length} * -1
+        
+        set x component of display scale of loop-value to {_new-width}
+        set x component of display translation of loop-value to -0.5 * {_new-width}
+        
+        set z component of display scale of loop-value to {_new-width}
+        set z component of display translation of loop-value to -0.5 * {_new-width}
+
+        rotateOnRollAxis(loop-value, {_prev-pitch} - 90, vector(1, 0, 0))
+        rotateOnRollAxis(loop-value, ({_pitch} - {_prev-pitch}), vector(1, 0, 0))
+        rotate(loop-value, (yaw of {_l}), 0, false)
+
+    return {_body::*}
+
+function magmarizer(p: player):
+
+    set {-power-active::%{_p}%::magmarizer} to true
+
+    set {_orig-l} to location 1 infront location 1.3 above {_p}
+    set {_l} to {_orig-l}
+    set {_temp-l} to getTargetLocation({_p}, {@range})
+
+    #set {_body::1} to magmarizerSpawnBody(location 100 below {_l})
+    set {_num-bodies} to 0
+
+    set {_prev-pitch} to 0
+
+    play sound "block.end_portal.spawn" at volume 2 at pitch 2 at {_l}
+
+    loop 80 times:
+
+        loop items in {_p}'s inventory where [unformat(name of input) = "magmarizer"]:
+            set item cooldown of loop-value-2 for {_p} to {powerAttributes::magmarizer::cooldown}
+
+        if hasDied({_p}) = true:
+            exit loop
+
+        #play sound "entity.illusioner.prepare_mirror" at volume 1.5 at pitch 1.5 + loop-value / 60 at {_l} and {_temp-l}
+        play sound "block.lava.pop" at volume 1.5 at pitch 1 + loop-value / 80 at {_l} and {_temp-l}
+        play sound "block.note_block.didgeridoo" at volume 1.5 at pitch 0.5 + loop-value / 80 at {_l} and {_temp-l}
+        play sound "entity.blaze.shoot" at volume 1.5 at pitch 0.5 + loop-value / 80 at {_l} and {_temp-l}
+
+        #set {_l} to {_l} ~ vector from {_l} to location 1 infront location 1.3 above {_p}
+        #set yaw of {_l} to yaw of {_p}
+        set {_l} to location 1 infront location 1.3 above {_p}
+        set pitch of {_l} to pitch of {_orig-l}
+        
+        set {_ray} to ray trace from {_p} with max distance {@range} while ignoring passable blocks
+        if hit entity of {_ray} is alive:
+            set {_temp-l} to hit location of {_ray}
+        else:
+            set {_temp-l} to getTargetLocation({_p}, {@range}) ? location {@range} infront of {_p}
+
+
+        set yaw of {_temp-l} to yaw of {_l}
+        set pitch of {_temp-l} to pitch of {_l}
+
+        set {_pitch} to pitch of vector from {_l} to {_temp-l}
+
+        set {_v} to (vector from {_l} to {_temp-l})
+        set {_length} to vector length of {_v}
+        set {_targets::*} to getLivingEntities({_p}, {_temp-l}, 2.75) where [input != {_p}]
+        loop {_targets::*}:
+            set {_ent} to loop-value-2
+            makeDamage({_p}, {_ent}, {powerAttributes::magmarizer::damage}, "magmarizer")
+
+        set {_target-block} to block 0.5 below {_temp-l}
+
+        size of (block displays in radius 1 of {_temp-l} where [block data of input = block data of {_targetBlock}]) = 0:
+            draw 1 explosion particle at {_target-block}
+            draw 1 lava particle at {_target-block}
+            groundShake({_target-block})
+            play sound (break sound of {_target-block}) at volume 3 at pitch 1 at {_target-block}
+    
+        throwOutFallingBlock({_target-block}, "up", 0.5)
+
+        chance of 33%:
+            spawnFloatingBlockCluster({_targetBlock}, {heads::gray-orb}, 2, 1.5, 60, 0.5, 0.1)
+        else:
+            spawnFloatingBlockCluster({_targetBlock}, {heads::fireball}, 2, 1.5, 60, 0.5, 0.1)
+
+        while ceil({_length} / {@section-size}) > {_num-bodies}:
+            add 1 to {_num-bodies}
+            if loop-counter-1 = 1:
+                set {_magma-body::%{_num-bodies}%} to magmarizerSpawnBody(location 100 below {_l}, shroomlight, {@section-size}, {@magma-width})
+                set {_glass-body::%{_num-bodies}%} to magmarizerSpawnBody(location 100 below {_l}, red stained glass, {@section-size}, {@glass-width})
+            else:
+                set {_magma-body::%{_num-bodies}%} to magmarizerSpawnBody(location 100 below {_l}, shroomlight, {@section-size}, {@magma-width}, {_prev-pitch})
+                set {_glass-body::%{_num-bodies}%} to magmarizerSpawnBody(location 100 below {_l}, red stained glass, {@section-size}, {@glass-width}, {_prev-pitch})
+
+        set {_new-magma-width} to 0.5 * {@magma-width} * (1 + cos(loop-value * 18) ^ 4)
+        set {_new-glass-width} to 0.5 * {@glass-width} * (1 + cos(loop-value * 18) ^ 4)
+
+        loop {_num-bodies} times:
+
+            set {_new-length} to min({@section-size}, {_length} - (-1 + loop-counter-2) * {@section-size})
+            #set {_new-length} to {@section-size}
+            if {_new-length} < 0:
+                kill {_magma-body::%loop-counter-2%} and {_glass-body::%loop-counter-2%}
+                clear {_magma-body::%loop-counter-2%} and {_glass-body::%loop-counter-2%}
+                subtract 1 from {_num-bodies}
+                continue
+
+            set {_magma-body} to {_magma-body::%loop-counter-2%}
+            set {_glass-body} to {_glass-body::%loop-counter-2%}
+
+            teleport {_magma-body} to {_l}
+            teleport {_glass-body} to {_l}
+
+
+            rotateOnRollAxis({_magma-body}, {_prev-pitch} * -1 + 90, vector(1, 0, 0))
+            rotateOnRollAxis({_glass-body}, {_prev-pitch} * -1 + 90, vector(1, 0, 0))
+
+            set y component of display scale of {_magma-body} and {_glass-body} to {_new-length}
+            set y component of display translation of {_magma-body} and {_glass-body} to (1 - loop-counter-2) * {@section-size} + {_new-length} * -1
+        
+            set x component of display scale of {_magma-body} to {_new-magma-width}
+            set x component of display scale of {_glass-body} to {_new-glass-width}
+
+            set x component of display translation of {_magma-body} to -0.5 * {_new-magma-width}
+            set x component of display translation of {_glass-body} to -0.5 * {_new-glass-width}
+
+            set z component of display scale of {_magma-body} to {_new-magma-width}
+            set z component of display scale of {_glass-body} to {_new-glass-width}
+
+            set z component of display translation of {_magma-body} to -0.5 * {_new-magma-width}
+            set z component of display translation of {_glass-body} to -0.5 * {_new-glass-width}
+
+            rotateOnRollAxis({_magma-body}, {_prev-pitch} - 90, vector(1, 0, 0))
+            rotateOnRollAxis({_glass-body}, {_prev-pitch} - 90, vector(1, 0, 0))
+
+            rotateOnRollAxis({_magma-body}, ({_pitch} - {_prev-pitch}), vector(1, 0, 0))
+            rotateOnRollAxis({_glass-body}, ({_pitch} - {_prev-pitch}), vector(1, 0, 0))
+
+            rotate({_magma-body}, (yaw of {_l}), 0, false)
+            rotate({_glass-body}, (yaw of {_l}), 0, false)
+
+        wait 1 tick
+
+        set {_prev-pitch} to {_pitch}
+
+
+    create explosion of force 2 at {_temp-l}
+    play sound "entity.blaze.death" at volume 3 at pitch 1 at {_l}
+    play sound "block.respawn_anchor.deplete" at volume 3 at pitch 1.5 at {_l}
+    play sound "block.fire.extinguish" at volume 3 at pitch 1.2 at {_l}
+
+    kill {_magma-body::*}
+    kill {_glass-body::*}
+
+    delete {-power-active::%{_p}%::magmarizer}

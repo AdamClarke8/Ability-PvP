@@ -1,0 +1,88 @@
+options:
+    radius: 1.25
+
+function lightningRod(p: player):
+
+    set {-power-active::%{_p}%::lightning-rod} to true
+
+    set {_target} to location 0.125 above getTargetLocation({_p}, 64)
+
+    set {_ring-display} to spawnTextRing({_target}, "&b", {@radius})
+    set {_orig-scale} to display scale of {_ring-display}
+    set {_orig-translation} to display translation of {_ring-display}
+
+    set {_shadow-radius} to {@radius} + 0.5
+    set shadow radius of {_ring-display} to {_shadow-radius}
+    set {_shadow-strength} to 0
+    set shadow strength of {_ring-display} to {_shadow-strength}
+
+    set {_warning-display} to spawnTextRing({_target}, "&e", {@radius})
+    set display opacity of {_warning-display} to 0
+
+    play sound "block.trial_spawner.about_to_spawn_item" at volume 3 at pitch 2 at {_p}
+    play sound "entity.evoker.prepare_attack" at volume 3 at pitch 1.8 at {_p}
+
+    loop 60 times:
+        if hasDied({_p}) = true:
+            exit loop
+
+        set {_ray} to ray trace from {_p} with max distance 64
+        if hit location of {_ray} is set:
+            set {_target} to location 0.125 above hit location of {_ray}
+
+        if loop-value <= 20:
+            set display opacity of {_ring-display} to -127 + (loop-value * (127 - 1) / 20)
+    
+
+        set {_radius-offset} to loop-value / 60
+        set display scale of {_ring-display} to {_orig-scale} * (1 + {_radius-offset})
+        set display translation of {_ring-display} to {_orig-translation} * (1 + {_radius-offset})
+        
+        set shadow strength of {_ring-display} to {_shadow-strength} + loop-value / 60
+        set shadow radius of {_ring-display} to {_shadow-radius} + {_radius-offset}
+
+        set pitch of {_target} to -90
+        set yaw of {_target} to loop-value * 4
+        teleport {_ring-display} to {_target}
+        teleport {_warning-display} to {_target}
+
+        if mod(loop-value, 5) = 0:
+            draw 1 campfire cosy smoke particle with offset vector(1, 1, 1) with particle speed 0.1 at {_target}
+
+        if mod(loop-value, 20) = 15:
+            draw 1 black flash particle at {_target}
+
+        if mod(loop-value, 20) > 14:
+            set display opacity of {_warning-display} to -1
+            set {_warning-scale} to (0 + mod(loop-value - 15, 20) / 5) * (1 + {_radius-offset})
+            set display scale of {_warning-display} to {_orig-scale} * {_warning-scale}
+            set display translation of {_warning-display} to {_orig-translation} * {_warning-scale}
+            loop-value <= 60
+            play sound "entity.illusioner.prepare_blindness" at volume 2.5 at pitch 1.5 + (mod(loop-value, 20) - 14) / 5 at {_target}
+
+        if mod(loop-value, 20) = 0:
+            loop-value <= 60
+            set display opacity of {_warning-display} to 0
+            strike lightning effect at {_target}
+            play sound "entity.breeze.death" at volume 3 at pitch 1.2 at {_target}
+            loop getLivingEntities({_p}, {_target}, {@radius} + {_radius-offset}) where [input != {_p}]:
+                set {_ent} to loop-value-2
+                makeDamage({_p}, {_ent}, {powerAttributes::lightning-rod::damage}, "lightning-rod")
+                draw 3 angry villager particle with offset vector(1, 1, 1) at {_ent}
+            draw 10 flame particle with offset vector(1, 1, 1) with particle speed 0.5 at {_target}
+            draw 2 campfire cosy smoke particle with offset vector(1, 1, 1) with particle speed 0.5 at {_target}
+
+        draw 1 smoke particle with offset vector(2, 2, 2) with particle speed 0.25 at {_target} 
+
+        wait 1 tick
+        stop sound "entity.lightning_bolt.thunder" in weather category for all players in radius 128 of {_target}
+
+    play sound "block.fire.extinguish" at volume 2 at pitch 0.8 at {_target}
+    play sound "block.beacon.deactivate" at volume 2 at pitch 1.2 at {_target}
+
+    spawnFloatingBlockCluster(location 0.5 below {_target}, {heads::light-gray-orb}, 6, 5, 40, 0.15)
+
+    kill {_ring-display}
+    kill {_warning-display}
+
+    delete {-power-active::%{_p}%::lightning-rod}

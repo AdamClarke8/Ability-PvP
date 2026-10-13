@@ -1,0 +1,156 @@
+options:
+    speed: 1.25
+    duration: 70
+
+function magicStewTransform(p: player, target: entity):
+
+    spawn mooshroom at {_target}:
+        set {_mooshroom} to event-entity
+        add nbt compound of "{NoAI:1b}" to nbt compound of {_mooshroom}
+        set max health of {_mooshroom} to max health of {_target}
+        set health of {_mooshroom} to health of {_target}
+
+    # disable collisions
+    add {_target} and {_mooshroom} to team named "magicStewTransformed"
+
+    set {-transformed::%{_target}%::magic-stew} to true
+    set {-mooshroom::%{_target}%} to {_mooshroom}
+    set {-owner::%{_mooshroom}%} to {_p}
+
+    applyInvis({_target}, "mooshroom")
+
+    apply jump boost 3 to {_target} for eternity:
+        hide particles
+
+    add 0.1 to walkspeed of {_target}
+
+    play sound "entity.mooshroom.convert" at volume 3 at pitch 1 at {_target}
+    strike lightning effect at {_target}
+
+    # amend later when teams added
+    if all:
+        {_target} != {_p} or {-mannequin::%{_p}%}
+        getPlayerSide({_target}) != getPlayerSide({_p})
+    then:
+        set {-powers-locked::%{_target}%} to true
+
+    startDuration({_target}, "magic-stew", {@duration} ticks)
+
+    loop {@duration} times:
+
+        if hasDied({_target}) = true:
+            exit loop
+
+        if loop-counter = 2:
+            stop sound "entity.lightning_bolt.thunder" in weather category for all players in radius 128 of {_target}
+        
+        #play sound "block.beacon.ambient" at volume 1 at pitch 2 at {_target}
+    
+        teleport {_mooshroom} to {_target}
+
+        draw 3 enchanting particle with offset vector(1, 1, 1) with particle speed 0.5 at {_target}
+        draw 3 portal particle with offset vector(1, 1, 1) with particle speed 0.5 at {_target}
+
+        if mod(loop-counter, 2) = 0:
+            draw 1 poof particle with offset vector(1, 1, 1) with particle speed 0.125 at {_target}
+        wait 1 tick
+
+    delete {-transformed::%{_target}%::magic-stew}
+    removeInvis({_target}, "mooshroom")
+
+    remove jump boost from potion effects of {_target}
+
+    subtract 0.1 from walkspeed of {_target}
+
+    remove {_p} and {_mooshroom} from team named "magicStewTransformed"
+
+    delete {-owner::%{_mooshroom}%}
+    delete {-mooshroom::%{_target}%}
+
+    if all:
+        {_target} != {_p} or {-mannequin::%{_p}%}
+        getPlayerSide({_target}) != getPlayerSide({_p})
+    then:
+        delete {-powers-locked::%{_target}%}
+
+    play sound "block.beacon.deactivate" at volume 2 at pitch 1.2 at {_target}
+    play sound "entity.generic.explode" at volume 2 at pitch 1.2 at {_target}
+    kill {_mooshroom}
+
+function magicStew(p: player):
+    set {_l} to location 0.8 above location 1 infront of {_p}
+
+    spawn item display at location 1.3 above {_l}:
+        set {_display} to event-entity
+        set item of {_display} to {heads::magic-stew}
+        set display scale of {_display} to vector(1.5, 1.5, 1.5)
+        set display translation of {_display} to vector(0, 0, 0)
+        set teleport duration of {_display} to 1 ticks
+        set interpolation duration of {_display} to 1 ticks
+
+    set {_temp-l} to location of {_display}
+
+    set {_vel-vert} to 0.25
+    set {_vel-hori} to {@speed}
+    set {_acceleration} to 0.05
+
+    set {_angle} to 24 * (random element of 1 and -1)
+
+    #play sound "entity.egg.throw" at volume 3 at pitch 1.2 at {_l}
+    #play sound "entity.shulker.shoot" at volume 2 at pitch 1.2 at {_l}
+    play sound "entity.witch.throw" at volume 1.5 at pitch 0.8 at {_l}
+
+    while {_display} is alive:
+
+        if loop-counter >= 70:
+            exit loop
+
+        else if {except::*} does not contain block at {_temp-l}:
+            exit loop
+
+        else if loop-counter <= 5:
+            set {_targets::*} to getLivingEntities({_p}, location of {_display}, 2.5, true) where [input != {_p} or {-mannequin::%{_p}%}]
+
+        else:
+            set {_targets::*} to getLivingEntities({_p}, location of {_display}, 2.5, true)
+
+        if {_targets::*} is set:
+            exit loop
+
+        wait 1 tick
+
+        set {_vel-vert} to {_vel-vert} - {_acceleration}
+        set {_temp-l} to location {_vel-vert} above location {_vel-hori} infront {_temp-l}
+
+        set interpolation delay of {_display} to 0 ticks
+
+        teleport {_display} to {_temp-l}
+        rotate {_display} around y-axis by {_angle} degrees
+        rotate {_display} around x-axis by {_angle} / 2 degrees
+
+        if mod(loop-counter, 2) = 0:
+            draw 3 flower pot block particle with offset vector(0.5, 0.5, 0.5) at {_display}
+            draw 3 brown mushroom block particle with offset vector(0.5, 0.5, 0.5)  at {_display}
+
+        play sound "block.trial_spawner.about_to_spawn_item" at volume 2 at pitch 2 at {_display}
+        play sound "entity.breeze.land" at volume 2 at pitch 1.2 at {_display}
+ 
+    set {_targets::*} to getLivingEntities({_p}, location of {_display}, 3.5, true, false)
+
+    loop {_targets::*}:
+
+        if all:
+            loop-value != {_p} or {-mannequin::%{_p}%}
+            getPlayerSide({_p}) != getPlayerSide(loop-value)
+        then:
+            makeDamage({_p}, loop-value, {powerAttributes::magic-stew::damage}, "magic-stew")
+        #play sound "entity.player.burp" at volume 2 at pitch 1 at loop-value
+        {-transformed::%loop-value%::magic-stew} != true
+        magicStewTransform({_p}, loop-value)
+
+    kill {_display}
+    draw 1 explosion particle at {_temp-l}
+    draw 25 glass block particle with offset vector(1, 1, 1) at {_temp-l}
+
+    play sound "entity.generic.explode" at volume 3 at pitch 1.2 at {_temp-l}
+    play sound "block.respawn_anchor.deplete" at volume 2 at pitch 2 at {_temp-l}

@@ -1,0 +1,147 @@
+options:
+    horiSpeed: 0.65
+    duration: 200
+    trailLifetime: 100
+
+function steamroller(p: player):
+
+    set {-power-active::%{_p}%::steamroller} to true
+    set {-powers-locked::%{_p}%} to true
+    set {-damage-reduction::%{_p}%} to 0.33
+
+    set {_l} to location of {_p}
+    #set yaw of {_l} to 0
+    set pitch of {_l} to 0
+
+    set {_vehicle-displays::*} to buildingToDisplay({structure::steamroller::1}, {structure::steamroller::2}, {structure::steamroller::centre}, 1, location 3 above {_l})
+    set {_drum-displays::*} to buildingToDisplay({structure::steamroller-drum::1}, {structure::steamroller-drum::2}, {structure::steamroller-drum::centre}, 1, location 3 south location 2 above {_l})
+    set {_left-wheel-displays::*} to buildingToDisplay({structure::steamroller-left-wheel::1}, {structure::steamroller-left-wheel::2}, {structure::steamroller-left-wheel::centre}, 1, location 5 north location 2 above location 2 west {_l})
+    set {_right-wheel-displays::*} to buildingToDisplay({structure::steamroller-right-wheel::1}, {structure::steamroller-right-wheel::2}, {structure::steamroller-right-wheel::centre}, 1, location 5 north location 2 above location 2 east {_l})
+
+    set {_vehicle-root} to {_vehicle-displays::1}
+    set {_drum-root} to {_drum-displays::1}
+    set {_left-wheel-root} to {_left-wheel-displays::1}
+    set {_right-wheel-root} to {_right-wheel-displays::1}
+
+    spawn armor stand at {_l}:
+        set {_stand} to event-entity
+        add nbt compound of "{Invisible:1b,Invulnerable:1b}" to nbt compound of {_stand}
+        set generic scale attribute of {_stand} to 2
+        set {-is-dave-9000-stand::%{_stand}%} to true
+    
+    spawn block display at location 1.25 above {_l}:
+        set {_seat} to event-entity
+        set {-is-steamroller-seat::%{_seat}%} to true
+
+    make {_p} ride {_seat}
+    send action bar "" to {_p}
+
+    play sound "block.end_portal.spawn" at volume 3 at pitch 1.5 at {_l}
+    create explosion of force 2 at {_l}
+    fallingDebris({_l}, 3, 1)
+
+    startDuration({_p}, "steamroller", {@duration} ticks)
+
+    loop {@duration} times:
+
+        if hasDied({_p}) = true:
+            exit loop
+
+        set {_yaw} to yaw of {_p}
+        set {_temp-l} to location of {_stand}
+
+        set {_v} to getWASD({_p})
+
+        if {_v} != vector(0, 0, 0):
+
+            if loop-counter > {@duration}:
+                set vector length of {_v} to {@horiSpeed} / 2
+
+            else:
+                set vector length of {_v} to {@horiSpeed}
+
+            set x component of velocity of {_stand} to x component of {_v}
+            set z component of velocity of {_stand} to z component of {_v}
+
+        if current input keys of {_p} contains jump key:
+            {_stand} is on ground
+            push {_stand} up at speed 0.75
+
+        set yaw of {_temp-l} to {_yaw}
+        teleport {_seat} to location 4.25 above {_temp-l}
+
+        if loop-counter > {@duration} - 20:
+            loop 3 times:
+                set {_v::%loop-value-2%} to (random integer between -100 and 100) / (400 + ({@duration} + 20 - loop-value-1) * 10)
+            set {_v} to vector({_v::1}, {_v::2}, {_v::3})
+            set {_temp-l} to {_temp-l} ~ {_v}
+            play sound "block.piston.extend" at volume 3 at pitch 0.5 + (-{@duration} + 20 + loop-value-2) / 20 at {_temp-l}
+            play sound "block.note_block.didgeridoo" at volume 3 at pitch 1 + (-{@duration} + 20 + loop-value-2) / 20 at {_temp-l}
+
+        teleport {_vehicle-root} to location 3 above {_temp-l}
+        teleport {_drum-root} to location 2 above location 3 infront {_temp-l}
+        teleport {_left-wheel-root} to location 2 above location 5 behind location 2 left of {_temp-l}
+        teleport {_right-wheel-root} to location 2 above location 5 behind location 2 right of {_temp-l}
+
+        set {_drum-l} to location 3 infront {_temp-l}
+        set {_chimney-l} to location 6 behind location 7 above {_temp-l}
+
+        loop getLivingEntities({_p}, {_drum-l}, 4) where [input != {_p}]:
+            set {_ent} to loop-value-2
+            if time since {-hit::%{_p}%::%{_ent}%::steamroller} is set:
+                if time since {-hit::%{_p}%::%{_ent}%::steamroller} < 1 seconds:
+                    continue
+
+            set {-hit::%{_p}%::%{_ent}%::steamroller} to now
+            play sound "enchant.thorns.hit" at volume 3 at pitch 1.2 at {_ent}
+            draw 10 crit particle with offset vector(1, 1, 1) with particle speed 0.5 at head of {_ent}
+            makeDamage({_p}, {_ent}, {powerAttributes::steamroller::damage}, "steamroller")
+
+        set {_angle} to min(18, loop-value * 0.5)
+        rotateOnRollAxis({_drum-displays::*}, {_angle}, vector(1, 0, 0))
+
+        if mod((loop-counter) - 1, 5) = 0:
+            draw 0 campfire cosy smoke particle with offset vector(0, 0.25, 0) with particle speed 0.25 at {_chimney-l}
+            draw 0 campfire cosy smoke particle with offset vector(0.25, 0.25, 0.25) with particle speed 0.375 at {_chimney-l}
+            draw 0 campfire cosy smoke particle with offset vector(-0.25, 0.25, -0.25) with particle speed 0.125 at {_chimney-l}
+            groundShakeArea({_drum-l}, 3, {@trailLifetime} ticks, (coarse dirt, farmland, gravel, podzol))
+            if loop-counter >= 20:
+                play sound "entity.wither.break_block" at volume 1 at pitch 1.2 at {_temp-l}
+            play sound "block.piston.contract" at volume 3 at pitch 0.5 + {_angle} / 54 at {_temp-l}
+
+        play sound "entity.iron_golem.attack" at volume 3 at pitch 0.5 + {_angle} / 18 at {_drum-l}
+        play sound "entity.villager.work_mason" at volume 3 at pitch 1 + {_angle} / 18 at {_drum-l}
+
+        if {_v} != vector(0, 0, 0):
+            if mod((loop-counter) - 1, 5) = 0:
+                fallingDebris({_drum-l}, 3, 1)
+            rotateOnRollAxis({_left-wheel-displays::*}, 9, vector(1, 0, 0))
+            rotateOnRollAxis({_right-wheel-displays::*}, 9, vector(1, 0, 0))
+
+        wait 1 tick
+
+        #if loop-counter = {@duration}:
+        #    set {_final-l} to {_temp-l}
+
+    kill {_vehicle-displays::*}
+    kill {_drum-displays::*}
+    kill {_left-wheel-displays::*}
+    kill {_right-wheel-displays::*}
+    kill {_stand}
+    kill {_seat}
+
+    create explosion of force 3 at {_temp-l}
+    draw 25 gust particle with offset vector(5, 5, 5) at {_temp-l}
+    spawnFloatingBlockCluster({_temp-l}, {heads::gray-orb}, 8, 16, 60, 0.3)
+    play sound "item.totem.use" at volume 3 at pitch 1 at {_temp-l}
+    play sound "entity.iron_golem.death" at volume 3 at pitch 1.2 at {_temp-l}
+    play sound "entity.blaze.death" at volume 3 at pitch 1 at {_temp-l}
+
+    set {-damage-reduction::%{_p}%} to 0
+    delete {-powers-locked::%{_p}%}
+    delete {-power-active::%{_p}%::steamroller}
+
+
+on dismount:
+    if {-is-steamroller-seat::%vehicle of event-entity%} = true:
+        cancel event

@@ -1,0 +1,40 @@
+local function mannequinCloneLoop(p: player, mannequin: entity):
+	while {_mannequin} is alive:
+		#set max health of {_mannequin} to max health of {_p}
+		#set health of {_mannequin} to health of {_p}
+		set max health of {_p} to max health of {_mannequin}
+		set health of {_p} to health of {_mannequin}
+		if world of {_mannequin} = "game":
+			if y-coord of {_mannequin} < (y-coord of {map-centre::%{current-map}%} - 15):
+				gamemode of {_p} = survival or adventure
+				set {-fell-into-void::%{_p}%} to true
+				kill {_mannequin}
+				kill {_p}
+				wait 2 ticks
+				delete {-fell-into-void::%{_p}%}
+		wait 1 tick
+	delete {-mannequin-owner::%{_mannequin}%}
+	delete {-mannequin::%{_p}%}
+
+function endMannequinLoop(p: player, mannequin: entity, death-anim: boolean = false):
+	teleport {_p} to (location of {_mannequin}) with yaw (yaw of {_p}) and pitch (pitch of {_p})
+	set velocity of {_p} to velocity of {_mannequin}
+	teleport {_mannequin} to spawn of world "world"
+	kill {_mannequin}
+
+function spawnMannequinClone(p: player, l: location) :: entity:
+	spawn mannequin at {_p}:
+		set {_mannequin} to event-entity
+		apply profile to {_mannequin}:
+			name: name of {_p}
+		set {-mannequin-owner::%{_mannequin}%} to {_p}
+		set {-mannequin::%{_p}%} to {_mannequin}
+		set health of {_mannequin} to health of {_p}
+		set name of {_mannequin} to "%prefix of {_p}%%{_p}%"
+		add nbt compound from "{CustomNameVisible:1b}" to nbt compound of {_mannequin}
+		add nbt compound from "{hide_description:true}" to nbt compound of {_mannequin}
+	rotate({_mannequin}, (yaw of {_p}), (pitch of {_p}), false)
+	set velocity of {_mannequin} to velocity of {_p}
+	mannequinCloneLoop({_p}, {_mannequin})
+	addToTeam({_mannequin}, getPlayerSide({_p}))
+	return {_mannequin}

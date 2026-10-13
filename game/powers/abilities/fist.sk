@@ -1,0 +1,82 @@
+options:
+    range: 4
+    scale: 2.5
+
+function fist(p: player):
+
+    set {_l} to location 1.3 above {_p}
+    set pitch of {_l} to 0
+    set yaw of {_l} to yaw of {_l} + 180
+
+    spawn item display at {_l}:
+        set {_display} to event-entity
+        #set item of {_display} to {heads::iron-fist}
+        set item of {_display} to {heads::stone-fist}
+        set display scale of {_display} to vector({@scale}, {@scale}, {@scale})
+        set teleport duration of {_display} to 1 tick
+        set interpolation duration of {_display} to 1 tick
+        set sky light override of {_display} to 15
+        set display translation of {_display} to vector(0, {@scale} * 0.25, 0)
+
+    set {_orig-scale} to display scale of {_display}
+    set {_orig-translation} to display translation of {_display}
+
+    set {_angle-sum} to 0
+
+    play sound "entity.blaze.shoot" at volume 3 at pitch 1 at {_l}
+    play sound "entity.player.attack.knockback" at volume 3 at pitch 1.2 at {_l}
+
+    loop 12 times:
+
+        set interpolation delay of {_display} to 0 ticks
+
+        set {_scale-factor} to sin(90 * loop-value / 12) ^ 1.5
+        set {_temp-l} to location {@range} * {_scale-factor} behind {_l}
+
+        if loop-value <= 10:
+            set {_final-scale} to {@scale} * (0.25 + 0.75 * easeInOutBounce(loop-value / 10))
+            set display scale of {_display} to vector({_final-scale}, {_final-scale}, {_final-scale})
+            set {_v} to {_orig-translation} * {_scale-factor}
+            rotate {_v} around z-axis by {_angle-sum}
+            set display translation of {_display} to {_v}
+
+        loop getLivingEntities({_p}, {_temp-l}, 3) where [input != {_p}]:
+
+            set {_ent} to loop-value-2
+            if time since {-hit::%{_p}%::%{_ent}%::fist} is set:
+                if time since {-hit::%{_p}%::%{_ent}%::fist} < 1 seconds:
+                    continue
+
+            set {-hit::%{_p}%::%{_ent}%::fist} to now
+            makeDamage({_p}, {_ent}, {powerAttributes::fist::damage}, "fist")
+
+            draw 100 deepslate block particle with offset vector(1, 1, 1) at {_ent} 
+            draw 10 crit particle with offset vector(1, 1, 1) with particle speed 0.5 at {_ent}
+            play sound "entity.iron_golem.repair" at volume 3 at pitch 1.2 at {_ent}
+            play sound "item.mace.smash_ground_heavy" at volume 3 at pitch 1.2 at {_ent}
+
+            applyPush({_ent}, (normalized vector from {_p} to {_ent}) * 2, {_p}, "fist")
+
+        teleport {_display} to {_temp-l}
+
+        set {_angle} to max(3, 48 * cos(90 * loop-value / 12) ^ 0.75)
+        #rotate {_display} around z-axis by 20 * cos(90 * loop-value / 40)
+        #set left transformation rotation of {_display} to axisAngle(20 *)
+        
+        rotateOnRollAxis({_display}, {_angle}, vector(0, 0, 1))
+
+        play sound "entity.breeze.charge" at volume 3 at pitch 2 - {_scale-factor} at {_temp-l}
+
+        if mod(loop-value, 2) = 0:
+            draw 1 sweep attack particle with offset vector(1, 1, 1) with particle speed 0.25 at {_temp-l}
+
+        wait 1 tick
+
+        add {_angle} to {_angle-sum}
+
+    wait 5 ticks
+
+    kill {_display}
+    draw 5 large smoke particle with offset vector(0.5, 0.5, 0.5) with particle speed 0.1 at {_temp-l}
+    play sound "ui.stonecutter.take_result" at volume 3 at pitch 1.2 at {_temp-l}
+    play sound "entity.phantom.flap" at volume 3 at pitch 1.2 at {_temp-l}

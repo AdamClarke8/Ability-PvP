@@ -1,0 +1,280 @@
+options:
+    speed: 1.25
+
+on script load:
+    delete {action-bar-text::flying-machine::*}
+    set {action-bar-text::flying-machine::1} to "<##00AC36>RIGHT CLICK TO DEPLOY TNT"
+    set {action-bar-text::flying-machine::2} to "<##00AC36>RIGHT CLICK TO DEPLOY TNT"
+    set {action-bar-text::flying-machine::3} to "<##00AC36>RIGHT CLICK TO DEPLOY TNT"
+    set {action-bar-text::flying-machine::4} to "<##00AC36>RIGHT CLICK TO DEPLOY TNT"
+    set {action-bar-text::flying-machine::5} to "<##00AC36>RIGHT CLICK TO DEPLOY TNT"
+    set {action-bar-text::flying-machine::6} to "<##00B037>RIGHT CLICK TO DEPLOY TNT"
+    set {action-bar-text::flying-machine::7} to "<##00C33D>RIGHT CLICK TO DEPLOY TNT"
+    set {action-bar-text::flying-machine::8} to "<##00CA3F>RIGHT CLICK TO DEPLOY TNT"
+    set {action-bar-text::flying-machine::9} to "<##00CD40>RIGHT CLICK TO DEPLOY TNT"
+    set {action-bar-text::flying-machine::10} to "<##00D041>RIGHT CLICK TO DEPLOY TNT"
+    set {action-bar-text::flying-machine::11} to "<##00D643>RIGHT CLICK TO DEPLOY TNT"
+    set {action-bar-text::flying-machine::12} to "<##00DD45>RIGHT CLICK TO DEPLOY TNT"
+    set {action-bar-text::flying-machine::13} to "<##00E347>RIGHT CLICK TO DEPLOY TNT"
+    set {action-bar-text::flying-machine::14} to "<##00EA49>RIGHT CLICK TO DEPLOY TNT"
+    set {action-bar-text::flying-machine::15} to "<##00F34C>RIGHT CLICK TO DEPLOY TNT"
+    set {action-bar-text::flying-machine::16} to "<##00FF50>RIGHT CLICK TO DEPLOY TNT"
+    set {action-bar-text::flying-machine::17} to "<##00FF50>RIGHT CLICK TO DEPLOY TNT"
+    set {action-bar-text::flying-machine::18} to "<##00FF50>RIGHT CLICK TO DEPLOY TNT"
+    set {action-bar-text::flying-machine::19} to "<##00FF50>RIGHT CLICK TO DEPLOY TNT"
+    set {action-bar-text::flying-machine::20} to "<##00FF50>RIGHT CLICK TO DEPLOY TNT"
+    set {action-bar-text::flying-machine::21} to "<##00F34C>RIGHT CLICK TO DEPLOY TNT"
+    set {action-bar-text::flying-machine::22} to "<##00EA49>RIGHT CLICK TO DEPLOY TNT"
+    set {action-bar-text::flying-machine::23} to "<##00E347>RIGHT CLICK TO DEPLOY TNT"
+    set {action-bar-text::flying-machine::24} to "<##00DD45>RIGHT CLICK TO DEPLOY TNT"
+    set {action-bar-text::flying-machine::25} to "<##00D643>RIGHT CLICK TO DEPLOY TNT"
+    set {action-bar-text::flying-machine::26} to "<##00D041>RIGHT CLICK TO DEPLOY TNT"
+    set {action-bar-text::flying-machine::27} to "<##00CD40>RIGHT CLICK TO DEPLOY TNT"
+    set {action-bar-text::flying-machine::28} to "<##00CA3F>RIGHT CLICK TO DEPLOY TNT"
+    set {action-bar-text::flying-machine::29} to "<##00C33D>RIGHT CLICK TO DEPLOY TNT"
+    set {action-bar-text::flying-machine::30} to "<##00B037>RIGHT CLICK TO DEPLOY TNT"
+
+function flyingMachine(p: player):
+
+    set {-power-active::%{_p}%::flying-machine} to true
+
+    set {_l} to location 3 above {_p}
+
+    set {_body-displays::*} to buildingToDisplay({structure::flying-machine-body::1}, {structure::flying-machine-body::2}, {structure::flying-machine-body::centre}, 1, {_l})
+    set {_propeller-displays::*} to buildingToDisplay({structure::flying-machine-propeller::1}, {structure::flying-machine-propeller::2}, {structure::flying-machine-propeller::centre}, 1, {_l})
+
+    set {_body-root} to {_body-displays::1}
+    set {_propeller-root} to {_propeller-displays::1}
+
+    loop {_propeller-displays::*}:
+
+        set interpolation duration of loop-value to 1 ticks
+
+        set {_v::%loop-counter%} to display translation of loop-value
+
+    spawn block display at location 3 above {_l}:
+        set {_seat} to event-entity
+        set {-is-flying-machine-seat::%{_seat}%} to true
+
+    spawn interaction at location 3 above {_l}:
+        set {_hitbox} to event-entity
+        set interaction width of {_hitbox} to 4
+        set interaction height of {_hitbox} to 4
+        set {-is-flying-machine-hitbox::%{_hitbox}%} to true
+        set {-seat::%{_hitbox}%} to {_seat}
+
+    make {_p} ride {_seat}
+
+    loop {_body-displays::*} and {_propeller-displays::*}:
+        set display translation of loop-value to display translation of loop-value + vector(0, -0.75, 0)
+
+    wait 1 tick
+
+
+    set {_trapdoor} to {_body-displays::2}
+
+    loop 36 times:
+        set {_v} to spherical vector radius 3, yaw loop-value * 10, pitch 0
+        draw 0 poof particle with offset {_v} with particle speed 0.25 at {_l} ~ {_v}
+        #draw 0 cloud at {_l} ~ {_v} with offset {_v} with particle speed 0.25
+
+    play sound "block.beacon.activate" at volume 2 at pitch 1.5 at {_p}
+    play sound "entity.breeze.shoot" at volume 2 at pitch 0.8 at {_p}
+    play sound "entity.horse.armor" at volume 2 at pitch 1.2 at {_p}
+
+    #set {_shuffledDisplays::*} to shuffled ({_body-displays::*} and {_propeller-displays::*})
+
+    set {-moving::%{_p}%::flying-machine} to true
+    set {-action-bar::%{_p}%::flying-machine} to true
+    set {-powers-locked::%{_p}%} to true
+
+    powerActionBar({_p}, "flying-machine")
+    startDuration({_p}, "flying-machine", 120 ticks)
+
+    loop 120 times:
+        
+        #if metadata "tntDeployedCount:flying-machine" of {_p} >= 5:
+        #    exit loop
+
+        if hasDied({_p}) = true:
+            exit loop
+
+        if {_p} is offline:
+            exit loop
+
+        set {_v} to getWASD({_p})
+        
+        if {_v} != vector(0, 0, 0):
+
+            #set y component of {_v} to sin(pitch of {_p}) * -1
+            set vector length of {_v} to min({@speed}, loop-counter / 40)
+
+        if current input keys of {_p} contains jump key:
+            add 0.5 to y component of {_v}
+
+        if current input keys of {_p} contains sneak key:
+            add -0.5 to y component of {_v}
+
+        if all:
+            {except::*} contains block at location 3 above {_l} ~ {_v}
+            {except::*} contains block at location 3 above {_l} ~ {_v} * 0.5
+            {except::*} contains block at location 3 above {_l} ~ {_v} * 2
+        then:
+            set {_l} to location ({-ufo-velocity::%{_seat}%}) above {_l} ~ {_v}
+
+        set interpolation delay of {_body-root}, {_propeller-root} and {_seat} to 0 ticks
+
+        teleport {_body-root} to location 3 above {_l}
+        teleport {_propeller-root} to location 3 above {_l}
+        teleport {_seat} to location 3 above {_l}
+        teleport {_hitbox} to location 3 above {_l}
+
+        set {_yaw} to yaw of {_p}
+        set {_pitch} to pitch of {_p}
+
+        rotate({_body-root}, {_yaw}, {_pitch}, false)
+        rotate({_propeller-root}, {_yaw}, {_pitch}, false)
+        #rotate({_seat}, {_yaw}, {_pitch}, false)
+
+        set {_v} to vector(0, 3, -1)
+
+        loop {_propeller-displays::*}:
+            set interpolation delay of loop-value-2 to 0 ticks
+            set display translation of loop-value-2 to (display translation of loop-value-2) - {_v}
+
+        set {_angle} to min(36, 12 + loop-counter / 2)
+
+        rotateOnRollAxis({_propeller-displays::*}, {_angle}, vector(0, 1, 0))
+        loop {_propeller-displays::*}:
+            set interpolation delay of loop-value-2 to 0 ticks
+            set display translation of loop-value-2 to (display translation of loop-value-2) + {_v}
+
+        set {_time-since-deploy} to time since {_p}'s metadata "tntDeployed:flying-machine"
+        set {_ticks} to ticks of {_time-since-deploy}
+
+        {_ticks} > 0:
+            if {_ticks} <= 15:
+                set {_angle} to 90 * easeOutBounce({_ticks} / 15)
+            #set {_v} to vector(0, 1, 1)
+            #set display translation of {_trapdoor} to (display translation of {_trapdoor}) - {_v}
+            set {_angle-diff} to {_angle} - {_prev-angle}
+            set {_v} to display translation of {_trapdoor} + vector(0, 1.1, 1.6)
+            rotate {_v} around x-axis by {_angle-diff} degrees
+            set display translation of {_trapdoor} to {_v} - vector(0, 1.1, 1.6)
+            rotate {_trapdoor} around x-axis by {_angle-diff} degrees
+            #set display translation of {_trapdoor} to (display translation of {_trapdoor}) + {_v}
+            set {_prev-angle} to {_angle}
+
+
+        loop getLivingEntities({_p}, {_l}, 3.5) where [input != {_p}]:
+
+            set {_ent} to loop-value-2
+            if time since {-hit::%{_p}%::%{_ent}%::flying-machine} is set:
+                if time since {-hit::%{_p}%::%{_ent}%::flying-machine} < 1 seconds:
+                    continue
+
+            set {-hit::%{_p}%::%{_ent}%::flying-machine} to now
+            makeDamage({_p}, {_ent}, {powerAttributes::flying-machine::trample-damage}, "flying-machine;trample")
+
+            applyPush({_ent}, (normalized vector from {_p} to {_ent}) * 1.25 + vector(0, 1, 0), {_p}, "flying-machine;trample")
+
+            draw 10 piston block particle at {_ent}
+            draw 5 crit particle with offset vector(1, 1, 1) with particle speed 0.25 at {_ent}
+            draw 3 cloud particle with offset vector(1, 1, 1) with particle speed 0.25 at {_ent}
+
+            play sound "entity.player.attack.knockback" at volume 3 at pitch 1.2 at {_ent}
+            play sound "entity.iron_golem.repair" at volume 2 at pitch 1.2 at {_ent}
+
+        play sound "entity.phantom.flap" at volume 2 at pitch 1 + loop-counter / 120 at {_p}
+
+        if mod(loop-counter, 2) = 0:
+            play sound "entity.breeze.idle_air" at volume 0.5 at pitch 1.5 + loop-counter / 240 at {_p}
+
+        #if loop-counter > 80:
+        #    play sound "block.wood.break" at volume 3 at pitch 1.2 at location 5 above {_l}
+        #    #set view range of {_shuffledDisplays::%loop-counter - 60%} to 0
+        #    draw 3 block using oak trapdoor at location 5 above {_l} with offset vector(1, 1, 1)
+
+        if mod(loop-counter, 4) = 0:
+            draw 1 gust particle with offset vector(3, 3, 3) at {_p}
+
+        wait 1 tick
+
+        set {_prev-yaw} to {_yaw}
+        set {_prev-pitch} to {_pitch}
+    
+    kill {_body-root}
+    kill {_propeller-root}
+    kill {_seat}
+    kill {_hitbox}
+
+    create explosion of force 2 at {_p}
+    spawnFloatingBlockCluster(location of {_p}, {heads::light-gray-orb}, 6, 4, 40, 0.3)
+
+    play sound "block.beacon.deactivate" at volume 3 at pitch 1.5 at {_p}
+    play sound "block.fire.extinguish" at volume 3 at pitch 0.8 at {_p}
+
+    delete {-moving::%{_p}%::flying-machine}
+    delete {-tnt-deployed-count::%{_p}%::flying-machine}
+    delete {-action-bar::%{_p}%::flying-machine}
+    
+    delete {-powers-locked::%{_p}%}
+    delete {-power-active::%{_p}%::flying-machine}
+
+function flyingMachineDeployTNT(p: player):
+
+    set {_l} to location 1 below location 1.5 horizontally behind {_p}
+
+    #if {_p}'s metadata "tntDeployedCount:flying-machine" = 1:
+    #    play sound "entity.zombie.attack_wooden_door" at volume 1.5 at pitch 1.5 at {_l}
+    
+    spawn item display at {_l}:
+        set {_display} to event-entity
+        set item of {_display} to {heads::tnt}
+        set display scale of {_display} to vector(1.25, 1.25, 1.25)
+        set teleport duration of {_display} to 1 tick
+
+    set {_temp-l} to {_l}
+    set {_vel-vert} to 0
+    set {_acceleration} to 0.3
+
+    play sound "block.lever.click" at volume 2 at pitch 1.2 at {_l}
+    play sound "entity.blaze.shoot" at volume 2 at pitch 1.2 at {_l}
+    #play sound "entity.zombie.attack_wooden_door" at volume 1 at pitch 2 at {_l}
+    #play sound "entity.firework_rocket.launch" at volume 2 at pitch 1.2 at {_l}
+
+    while {except::*} contains block at {_temp-l}:
+
+        set {_targets::*} to getLivingEntities({_p}, {_temp-l}, 4) where [input != {_p}]
+        {_targets::*} is set:
+            exit loop
+
+        add 18 to yaw of {_temp-l}
+        add 9 to pitch of {_temp-l}
+    
+        set {_vel-vert} to {_vel-vert} + {_acceleration}
+        set {_temp-l} to location {_vel-vert} below {_temp-l}
+        teleport {_display} to {_temp-l}
+    
+        wait 1 tick
+    
+    kill {_display}
+
+    loop {_targets::*}:
+        makeDamage({_p}, loop-value, {powerAttributes::flying-machine::tnt-damage}, "flying-machine;tnt")
+
+    create explosion of force 2 at {_temp-l}
+
+
+on right click:
+    if {-moving::%player%::flying-machine} = true:
+        {-tnt-deployed::%player%::flying-machine} is set:
+            time since {-tnt-deployed::%player%::flying-machine}  < 10 ticks:
+                stop
+        set {-tnt-deployed::%player%::flying-machine}  to now
+        add 1 to {-tnt-deployed-count::%player%::flying-machine}
+        flyingMachineDeployTNT(player)
+
+on dismount:
+    if {-is-flying-machine-seat::%vehicle of event-entity%} = true:
+        cancel event

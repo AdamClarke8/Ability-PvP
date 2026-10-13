@@ -1,0 +1,158 @@
+options:
+    speed: 2.5
+    bloom: 0.75
+    iceCountPerLayer: 2
+    iceDecayTime: 20
+    iceCountMax: 10
+
+on script load:
+    wait 40 ticks
+    set {ice-in-a-bottle-items::*} to {heads::ice-cube}, {heads::snowball} and light blue stained glass
+
+function spawnIceDisplay(p: entity) :: entity:
+    spawn block display at {_p}:
+        set {_display} to event-entity
+        set block data of {_display} to ice
+        set display scale of {_display} to vector(1, 0.1, 1)
+        set teleport duration of {_display} to 1 tick
+        set display translation of {_display} to vector(-0.5, (y-coord of {_p}) - (y-coord of head of {_p}) - 0.25, -0.5)
+        set yaw of {_display} to 0
+        set pitch of {_display} to 0
+        make {_display} ride {_p}
+        set {-ice-display::%{_p}%} to {_display}
+    return {_display}
+
+function updateIceWalkSpeed(p: entity):
+    set movement speed attribute of {_p} to {-orig-walk-speed::%{_p}%} * (1 - {-ice-counter::%{_p}%} / {@iceCountMax})
+
+function updateIceJumpStrength(p: entity):
+    set jump strength attribute of {_p} to {-orig-jump-strength::%{_p}%} * (1 - {-ice-counter::%{_p}%} / {@iceCountMax})
+
+function updateIceDisplay(p: entity):
+    set y component of display scale of {-ice-display::%{_p}%} to {-ice-counter::%{_p}%} / {@iceCountMax}
+
+function startIceLoop(p: entity):
+    set {_display} to spawnIceDisplay({_p})
+    set {-orig-walk-speed::%{_p}%} to movement speed attribute of {_p}
+    set {-orig-jump-strength::%{_p}%} to jump strength attribute of {_p}
+    while {-ice-counter::%{_p}%} is set:
+
+        updateIceDisplay({_p})
+
+        loop {@iceDecayTime} times:
+            wait 1 tick
+
+            if hasDied({_p}) = true:
+                exit all loops
+
+            if {_p} is not alive:
+                exit all loops
+
+        subtract 1 from {-ice-counter::%{_p}%}
+        updateIceWalkSpeed({_p})
+        updateIceJumpStrength({_p})
+
+        if {-ice-counter::%{_p}%} = 0:
+            delete {-ice-counter::%{_p}%}
+    
+    if {-ice-counter::%{_p}%} != 0:
+        delete {-ice-counter::%{_p}%}
+
+    updateIceWalkSpeed({_p})
+    updateIceJumpStrength({_p})
+    delete {-ice-display::%{_p}%}
+    delete {-orig-walk-speed::%{_p}%}
+    delete {-orig-jump-strength::%{_p}%}
+    kill {_display}
+
+function addIceLayer(p: entity):
+    if {-ice-counter::%{_p}%} is not set:
+        set {-ice-counter::%{_p}%} to {@iceCountPerLayer}
+        startIceLoop({_p})
+    else:
+        set {-ice-counter::%{_p}%}  to min({-ice-counter::%{_p}%} + {@iceCountPerLayer}, {@iceCountMax})
+    updateIceDisplay({_p})
+    updateIceWalkSpeed({_p})
+    updateIceJumpStrength({_p})
+
+function iceInABottleParticle(p: player, l: location, v: vector, i: item type, scale: number):
+
+    set {_l} to location 8 above {_l}
+    set yaw of {_l} to (yaw of {_l}) + (random integer between 1 and 360)
+    set pitch of {_l} to 0
+
+    set yaw of {_v} to yaw of {_v} + (random integer between -900 and 900) * {@bloom} / 100
+    set pitch of {_v} to pitch of {_v} + (random integer between -900 and 900) * {@bloom} / 100
+
+    spawn item display at {_l}:
+        set {_display} to event-entity
+        set item of {_display} to {_i}
+        set display scale of {_display} to vector({_scale}, {_scale}, {_scale}) * (random integer between 750 and 1250) / 1000
+        set display translation of {_display} to vector(0, -8, 0)
+        set interpolation duration of {_display} to 1 tick
+        set teleport duration of {_display} to 1 tick
+        rotate {_display} around x-axis by (random integer between 1 and 360) degrees
+        rotate {_display} around y-axis by (random integer between -90 and 90) degrees
+
+    set {_temp-l} to {_l}
+
+    loop 20 times:
+
+        set {_draw-l} to location 8 below {_temp-l}
+        if {except::*} does not contain block at {_draw-l}:
+            exit loop
+
+        loop getLivingEntities({_p}, {_draw-l}, 1.5) where [input != {_p}]:
+            set {_ent} to loop-value-2
+
+            if time since {-hit::%{_p}%::%{_ent}%::ice-in-a-bottle} is set:
+                if time since {-hit::%{_p}%::%{_ent}%::ice-in-a-bottle} < 0.5 seconds:
+                    continue
+
+            set {-hit::%{_p}%::%{_ent}%::ice-in-a-bottle} to now
+
+            #draw 1 gust particle with offset vector(1, 1, 1) with particle speed 0 at {_ent}
+            makeDamage({_p}, {_ent}, {powerAttributes::ice-in-a-bottle::damage}, "ice-in-a-bottle")
+            addIceLayer({_ent})
+
+        set {_v} to {_v} * 0.95
+        set {_temp-l} to {_temp-l} ~ {_v}
+        teleport {_display} to {_temp-l}
+
+        set display scale of {_display} to (display scale of {_display}) * 0.9
+        rotate {_display} around y-axis by 6 degrees
+        rotate {_display} around x-axis by 3 degrees
+
+        chance of 5%:
+            draw 1 poof particle with offset vector(0.125, 0.125, 0.125) with particle speed 0.05 at {_draw-l}
+            
+        chance of 2%:
+            draw 3 snow block particle with offset vector(0.125, 0.125, 0.125) with particle speed 0.05 at {_draw-l}
+
+        chance of 0.5%:
+            draw 1 small gust particle with offset vector(0, 0, 0) with particle speed 0 at {_draw-l}
+
+        wait 1 tick
+
+    kill {_display}
+
+function iceInABottle(p: player):
+    set {_l} to location 1.3 above location 1 infront of {_p}
+
+    play sound "entity.player.burp" at volume 2 at pitch 0.8 at {_l}
+    play sound "block.amethyst_block.resonate" at volume 3 at pitch 1.2 at {_l}
+    play sound "entity.blaze.shoot" at volume 3 at pitch 1.5 at {_l}
+
+    #draw 1 explosion particle at {_l}
+
+    loop 20 times:
+        set {_v} to vector from yaw (yaw of {_p}) and pitch (pitch of {_p})
+        set vector length of {_v} to {@speed}
+        set {_temp-l} to location 1.3 above location 1 infront of {_p}
+        set {_i} to random element of {ice-in-a-bottle-items::*}
+        iceInABottleParticle({_p}, {_temp-l}, {_v}, {_i}, 1.75 - loop-value / 40)
+        #play sound "block.amethyst_block.hit" at volume 2.5 at pitch 2 at {_l}
+        play sound "block.snow.break" at volume 2.5 at pitch 2 - 0.75 * sin(loop-value * 180 / 20) ^ 0.5 at {_l}
+        wait 1 tick
+
+    play sound "block.fire.extinguish" at volume 2 at pitch 1.5 at {_temp-l}

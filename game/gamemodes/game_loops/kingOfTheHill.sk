@@ -1,0 +1,318 @@
+options:
+    time-until-results: 140
+
+function endKingOfTheHill(lobby: text):
+    set {king-of-the-hill::%{_lobby}%} to false
+    delete {-points::%{_lobby}%::king-of-the-hill::*}
+    delete {-kills::king-of-the-hill::*}
+    delete {-deaths::king-of-the-hill::*}
+    delete {-damage-dealt::king-of-the-hill::*}
+    delete {-damage-taken::king-of-the-hill::*}
+    delete {-points::%{_lobby}%::king-of-the-hill::*}
+    delete {-gamemode::%{_lobby}%}
+    cleanUpPlayers({_lobby}, getPlayers({_lobby}))
+    cleanUpCurrentMap({_lobby})
+    clearTeam({_lobby}, "blue")
+    clearTeam({_lobby}, "red")
+
+function enterKingOfTheHillAnim(ring-display: entity):
+    set {-enlarge::%{_ring-display}%} to now
+    set {_time} to now
+
+    play sound "block.amethyst_block.resonate" at volume 3 at pitch 1.25 at {_ring-display}
+    wait 1 tick
+
+    set {_orig-scale} to display scale of {_ring-display}
+    set {_orig-translation} to display translation of {_ring-display}
+    set text of {_ring-display} to "&b◯"
+
+    loop 20 times:
+        if {-enlarge::%{_ring-display}%} != {_time}:
+            exit loop
+        set {_factor} to 1 + 0.25 * (1 - easeOutBounce(loop-value / 20))
+        set display scale of {_ring-display} to {_orig-scale} * {_factor}
+        set display translation of {_ring-display} to {_orig-translation} * {_factor}
+        wait 1 tick
+
+    set text of {_ring-display} to "&a◯"
+    set display scale of {_ring-display} to {_orig-scale}
+    set display translation of {_ring-display} to {_orig-translation}
+
+function leaveKingOfTheHillAnim(ring-display: entity):
+    set {-enlarge::%{_ring-display}%} to now
+    set {_time} to now
+
+    play sound "block.amethyst_block.resonate" at volume 3 at pitch 0.75 at {_ring-display}
+    wait 1 tick
+
+    set {_orig-scale} to display scale of {_ring-display}
+    set {_orig-translation} to display translation of {_ring-display}
+    set text of {_ring-display} to "&c◯"
+
+    loop 20 times:
+        if {-enlarge::%{_ring-display}%} != {_time}:
+            exit loop
+        set {_factor} to 1 + 0.25 * (1 - easeOutBounce(loop-value / 20))
+        set display scale of {_ring-display} to {_orig-scale} * {_factor}
+        set display translation of {_ring-display} to {_orig-translation} * {_factor}
+        wait 1 tick
+    
+    set text of {_ring-display} to "&a◯"
+    set display scale of {_ring-display} to {_orig-scale}
+    set display translation of {_ring-display} to {_orig-translation}
+
+function linkTextRings(ring-display-1: entity, ring-display-2: entity):
+    while {_ring-display-1} is alive:
+        set display scale of {_ring-display-2} to display scale of {_ring-display-1}
+        set display translation of {_ring-display-2} to display translation of {_ring-display-1}
+        set display opacity of {_ring-display-2} to display opacity of {_ring-display-1}
+        wait 1 tick
+    kill {_ring-display-2}
+
+function spawnTextRing(l: location, colour: text = "&a", radius: number = 3, n: number = 1) :: entity:
+    
+    spawn text display at {_l}:
+        set {_ring-display} to event-entity
+        set text of {_ring-display} to "%{_colour}%◯"
+        # 25-255 to increase opaqueness
+        set text opacity of {_ring-display} to 255
+
+        set {_scale} to {_radius} * 14
+        set display scale of {_ring-display} to vector({_scale}, {_scale}, {_scale})
+        #set display opacity of {_ring-display} to 1
+        set display translation of {_ring-display} to vector(-0.0187 * {_scale}, -0.119 * {_scale}, 0)
+        set teleport duration of {_ring-display} to 1 tick
+        set interpolation duration of {_ring-display} to 1 tick
+        set billboard of {_ring-display} to fixed
+        set color of {_ring-display} to rgb(0,0,0,0)
+        set sky light override of {_ring-display} to 15
+        set pitch of {_ring-display} to -90
+
+    if {_n} = 1:
+        set {_ring-display-2} to spawnTextRing({_l}, {_colour}, {_radius}, 2)
+        set pitch of {_ring-display-2} to 90
+        make {_ring-display-2} ride {_ring-display}
+        linkTextRings({_ring-display}, {_ring-display-2})
+
+    return {_ring-display}
+
+function declareWinnerKingOfTheHill(lobby: text, side: text):
+
+    set {king-of-the-hill::%{_lobby}%} to false
+
+    set {_blue-players::*} to getPlayersOnTeam({_lobby}, "blue")
+    set {_red-players::*} to getPlayersOnTeam({_lobby}, "red")
+
+    if {_side} = "blue":
+        set {_text::*} to nl, "&a① &7»", "&9&lBLUE", "&fhas won! &7(%{-points::%{_lobby}%::king-of-the-hill::blue}% points)" and nl
+
+        sendWinnerTitle({_blue-players::*})
+        sendLoserTitle({_red-players::*})
+
+        awardWinners({_blue-players::*}, "king-of-the-hill")
+        awardLosers({_red-players::*}, "king-of-the-hill")
+
+
+    else if {_side} = "red":
+        set {_text::*} to nl, "&a① &7»", "&c&lRED", "&fhas won! &7(%{-points::%{_lobby}%::king-of-the-hill::red}% points)" and nl
+
+        sendWinnerTitle({_red-players::*})
+        sendLoserTitle({_blue-players::*})
+
+        awardWinners({_red-players::*}, "king-of-the-hill")
+        awardLosers({_blue-players::*}, "king-of-the-hill")
+
+    #awardForKills({_lobby}, "king-of-the-hill")
+    #awardForAssists({_lobby}, "king-of-the-hill")
+    awardForPoints({_lobby}, "king-of-the-hill")
+
+    set {_text} to merge components {_text::*} with " "
+    send component {_text} to getPlayersInLobby({_lobby})
+    play sound "event.raid.horn" at volume 3 at pitch 1.2 to getPlayersInLobby({_lobby})
+    play sound "ui.toast.challenge_complete" at volume 3 at pitch 1 to getPlayersInLobby({_lobby})
+    cleanUpPlayers({_lobby}, getPlayers({_lobby}))
+    cleanUpCurrentMap({_lobby})
+    wait {@time-until-results} ticks
+    startResults({_lobby})
+    wait 5 ticks
+    while {-showing-results::%{_lobby}%} = true:
+        wait 1 tick
+    endKingOfTheHill({_lobby})
+
+function startKingOfTheHill(lobby: text, ticks: number = 3 * 60 * 20):
+
+    set {-orig-players::%{_lobby}%::*} to getPlayers({_lobby})
+
+    set {king-of-the-hill::%{_lobby}%} to true
+    set {-gamemode::%{_lobby}%} to "king-of-the-hill"
+
+    #set {king-of-the-hill-req-points} to {_points}
+    set {-time-left::%{_lobby}%::king-of-the-hill} to {_ticks}
+    set {-max-time::%{_lobby}%::king-of-the-hill} to {_ticks}
+
+    loop getPlayers({_lobby}):
+        if mod(loop-counter, 2) = 0:
+            addToTeam(loop-player, "red")
+            make loop-player glow red for getPlayers({_lobby})
+        else:
+            addToTeam(loop-player, "blue")
+            make loop-player glow blue for getPlayers({_lobby})
+        resetPlayerMatch(loop-player)
+        sidebar(loop-player)
+
+    loadPowerChests({_lobby}, getCurrentMap({_lobby}))
+    loadPartyCannons({_lobby}, getCurrentMap({_lobby}))
+
+    loop 100 times:
+        wait 1 tick
+
+    giveStartingPowers({_lobby})
+
+    set {-points::%{_lobby}%::king-of-the-hill::blue} to 0
+    set {-points::%{_lobby}%::king-of-the-hill::red} to 0
+
+    set {_l} to location 1 above getCurrentMapCentre({_lobby})
+
+    set yaw of {_l} to 0
+    set pitch of {_l} to 0
+
+    spawn text display at location 3 above {_l}:
+        set {_text-display} to event-entity
+        set text of {_text-display} to ""
+        set display scale of {_text-display} to vector(4, 4, 4)
+        set line width of {_text-display} to 1000
+        set billboard of {_text-display} to vertical
+
+    set {_radius} to 8
+    set {_ring-display} to spawnTextRing(location 0.5 below block at {_l}, "&a", {_radius})
+
+    while {king-of-the-hill::%{_lobby}%} = true:
+
+        if size of getPlayers({_lobby}) = 0:
+            exit loop
+
+        #set {_text} to ""
+
+        #loop getPlayers({_lobby}) in radius {_radius} of {_l} where [gamemode of input = survival]:
+        #    add 1 to loop-player's metadata "points"
+        #    set {_player-head} to object text component with player head from loop-player
+        #    set {_points} to "&a%loop-player's metadata "points"%"
+        #    set {_text} to merge components ({_text} and {_player-head} and {_points}) joined with " "
+
+        set {_prev-players::*} to {_current-players::*}
+        set {_current-players::*} to getPlayers({_l}, {_radius}, true)
+
+        #if size of {_current-players::*} > 0:
+        #    play sound "block.stone.place" at volume 1 at pitch 2 at {_l}
+
+        if size of {_current-players::*} > size of {_prev-players::*}:
+            enterKingOfTheHillAnim({_ring-display})
+
+        else if size of {_current-players::*} < size of {_prev-players::*}:
+            leaveKingOfTheHillAnim({_ring-display})
+
+        loop {_current-players::*}:
+            set {_side} to getPlayerSide(loop-value)
+            add 1 to {-points::%{_lobby}%::king-of-the-hill::%{_side}%}
+            add 1 to {-points::%{_lobby}%::king-of-the-hill::%loop-value%}
+
+            if {player-options::%loop-value%::save-stats} != false:
+                addToStat(loop-value, "king-of-the-hill", "points", 1)
+    
+            #if {-points::%{_lobby}%::king-of-the-hill::%{_side}%} >= {_points}:
+            #    declareWinnerKingOfTheHill({_side})
+
+            #    set {_winner} to loop-value
+            #    set {_player-head} to object text component with player head from {_winner}
+            #    set {_text::*} to nl, "&a① &7»", "&a&l%{_winner}%", {_player-head}, "&fhas won! &7(%{_points}% points)" and nl
+            #    set {_text} to merge components {_text::*} with " "
+            #    broadcast component {_text}
+            #    loop players:
+                    #broadcast "&a%loop-value-2%: &f%{-kills::king-of-the-hill::%loop-value-2%} ? 0% Kills&7, &f%{-damage-dealt::king-of-the-hill::%loop-value-2%} ? 0% Damage Dealt&7, &f%{-damage-taken::king-of-the-hill::%loop-value-2%} ? 0% Damage Taken"
+            #        broadcast "&a%loop-value-2%: &f%{-points::%{_lobby}%::king-of-the-hill::%loop-value-2%} ? 0% Points&7, &f%{-kills::king-of-the-hill::%loop-value-2%} ? 0% Kills&7, &f%{-deaths::king-of-the-hill::%loop-value-2%} ? 0% Deaths"
+            #    broadcast ""
+            #    play sound "event.raid.horn" at volume 3 at pitch 1.2 at {_l}
+            #    play sound "ui.toast.challenge_complete" at volume 3 at pitch 1 at {_l}
+            #    endKingOfTheHill()
+            #    exit all loops
+
+        #if mod((loop-counter) - 1, 20) = 0:
+        if (size of {_current-players::*}) > 0:
+            sidebar(getPlayers({_lobby}), "points")
+
+        if {-points::%{_lobby}%::king-of-the-hill::blue} >= {-points::%{_lobby}%::king-of-the-hill::red}:
+            set {_first} to "&9&lBLUE &7» &a%{-points::%{_lobby}%::king-of-the-hill::blue}%"
+            set {_second} to "&c&lRED &7» &a%{-points::%{_lobby}%::king-of-the-hill::red}%"
+
+        else:
+            set {_first} to "&c&lRED &7» &a%{-points::%{_lobby}%::king-of-the-hill::red}%"
+            set {_second} to "&9&lBLUE &7» &a%{-points::%{_lobby}%::king-of-the-hill::blue}%"
+
+        set {_text} to merge components ({_first} and {_second}) joined with nl
+        
+        #set {_objective} to toSmallFont("OBJECTIVE: 1000 POINTS")
+        set {_leaderboard} to toSmallFont("LEADERBOARD")
+        if mod({_ticks-left}, 20) = 0:
+            set {_prefix::*} to "&bTIME REMAINING: %getTimeLeftFormatted({_lobby})%", "&e%{_leaderboard}%"
+            sidebar(getPlayersInLobby({_lobby}), "time-left")
+
+        set {_text} to merge components ({_prefix::*} and {_text}) with nl
+        set display text component of {_text-display} to {_text}
+        
+        #if mod((loop-counter) - 1, 20) = 0:
+        #    set {_sorted-players::*} to sortArrayCompareDescending(indices of {-points::%{_lobby}%::king-of-the-hill::*}, {-points::%{_lobby}%::king-of-the-hill::*})
+
+        #loop {_sorted-players::*}:
+        #    set {_player} to loop-value parsed as player
+        #    #{_player} is not set:
+        #    #    clear {-points::%{_lobby}%::king-of-the-hill::%loop-value%}
+        #    #    continue
+        #
+        #    set {_player-head} to object text component with player head from {_player}
+        #    #set {_name} to toSmallFont(name of {_player})
+        #    set {_prefix} to "&f%name of {_player}%"
+        #    #set {_score} to toSmallFont("%{-points::%{_lobby}%::king-of-the-hill::%{_player}%}%")
+        #    set {_score} to "&7» &a%{-points::%{_lobby}%::king-of-the-hill::%{_player}%}%"
+        #    set {_text} to merge components ({_text}, {_prefix}, {_player-head}, {_score} and nl) joined with " "
+        
+        #set {_objective} to toSmallFont("OBJECTIVE: 1000 POINTS")
+        #set {_leaderboard} to toSmallFont("LEADERBOARD")
+        #set {_prefix::*} to "&b%{_objective}%", "&e%{_leaderboard}%"
+        #set {_prefix::*} to "&bOBJECTIVE: %{_points}% POINTS", "&e%{_leaderboard}%"
+        #set {_text} to merge components ({_prefix::*} and {_text}) with nl
+        #set display text component of {_text-display} to {_text}
+
+        set interpolation delay of {_ring-display} to 0 ticks
+        add 3 to yaw of {_ring-display}
+        
+        wait 1 tick
+        set {-time-left::%{_lobby}%::king-of-the-hill} to {-time-left::%{_lobby}%::king-of-the-hill} - 1
+        set {_ticks-left} to {-time-left::%{_lobby}%::king-of-the-hill}
+
+        if {_ticks-left} = 2400:
+            warnMinutesLeft(getPlayersInLobby({_lobby}), 2)
+
+        else if {_ticks-left} = 1200:
+            warnMinutesLeft(getPlayersInLobby({_lobby}), 1)
+
+        else if {_ticks-left} = 200:
+            startMatchCountdown(getPlayersInLobby({_lobby}))
+
+        else if {_ticks-left} <= 0:
+            if {-points::%{_lobby}%::king-of-the-hill::blue} >= {-points::%{_lobby}%::king-of-the-hill::red}:
+                declareWinnerKingOfTheHill({_lobby}, "blue")
+            else if {-points::%{_lobby}%::king-of-the-hill::red} > {-points::%{_lobby}%::king-of-the-hill::blue}:
+                declareWinnerKingOfTheHill({_lobby}, "red")
+
+    kill {_text-display}
+    kill {_ring-display}
+
+command /start-king-of-the-hill <number>:
+    permission: op
+    trigger:
+        startKingOfTheHill(getLobby(player), 20 * 60 * arg)
+
+command /end-king-of-the-hill:
+    permission: op
+    trigger:
+        endKingOfTheHill(getLobby(player))

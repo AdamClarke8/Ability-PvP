@@ -1,0 +1,14 @@
+options:
+	players: ""
+
+command /enable-beta-testing-whitelist:
+	permission: op
+	trigger:
+		loop {@players}:
+			execute console command "/whitelist add %loop-value%"
+
+command /disable-beta-testing-whitelist:
+	permission: op
+	trigger:
+		loop {@players}:
+			execute console command "/whitelist remove %loop-value%"

@@ -1,0 +1,140 @@
+options:
+    radius: 4.5
+    drop-height: 16
+    crater-blocks: stone, andesite, polished andesite, acacia wood
+    crater-lifetime: 100
+
+function spawnTextSkull(l: location, colour: text = "&c", radius: number = 3) :: entity:
+
+    spawn text display at {_l}:
+        set {_skull-display} to event-entity
+        set text of {_skull-display} to "&7☠"
+        set {_scale} to {_radius} * 14
+        set display scale of {_skull-display} to vector({_scale}, {_scale}, {_scale})
+        set line width of {_skull-display} to 1000
+        set display translation of {_skull-display} to vector(-0.0187 * {_scale}, -0.119 * {_scale}, 0)
+        set teleport duration of {_skull-display} to 1 tick
+        set interpolation duration of {_skull-display} to 1 tick
+        set billboard of {_skull-display} to fixed
+        set color of {_skull-display} to rgb(0, 0, 0, 0)
+        set sky light override of {_skull-display} to 15
+        set pitch of {_skull-display} to -90
+
+    return {_skull-display}
+
+function meteorSpawnCraterBlock(l: location, n: number):
+
+    if block at {_l} != air:
+        set {_l} to location 1 above {_l}
+
+    else:
+        while {except::*} contains block 1 below {_l}:
+            set {_l} to location 1 below {_l}
+            if loop-counter > 2:
+                stop
+
+    spawn block display at location 1 below {_l}:
+        set {_display} to event-entity
+
+        set {_type} to random element of {@crater-blocks}
+        set block data of {_display} to "%{_type}%" parsed as block data
+
+        set display scale of {_display} to vector(1.5, 1.5, 1.5)
+        set display translation of {_display} to vector(-0.75, 0, -0.75)
+        set sky light override of {_display} to 15
+
+        set {_angle} to (random integer between -300 and 300) / 10
+        rotate {_display} around vector(0, 1, 0) by {_angle} degrees
+        rotate {_display} around vector(1, 0, 0) by {_angle} degrees
+
+    wait "%{@crater-lifetime} + 30 + {_n} * 2% ticks" parsed as timespan
+    kill {_display}
+    draw 5 {_type} block particle with offset vector(1, 1, 1) at {_l}
+    play sound (break sound of {_type}) at volume 1.5 at pitch 0.8 at {_l}
+
+function meteor(p: player):
+    
+    set {_target} to location 0.125 above getTargetLocation({_p}, 64)
+
+    set {_skull-display} to spawnTextSkull({_target}, "&7", {@radius} / 2)
+    set {_ring-display} to spawnTextRing({_target}, "&7", {@radius})
+
+    set {_displays::*} to buildingToDisplay({structure::meteor::1}, {structure::meteor::2}, {structure::meteor::centre}, 0.75, location {@drop-height} above {_target})
+    set {_root} to {_displays::1}
+
+    set shadow radius of {_root} to {@radius} * 1.5
+    set shadow strength of {_root} to 1.25
+
+    play sound "entity.illusioner.prepare_blindness" at volume 3 at pitch 1.2 at {_target}
+
+    loop 20 times:
+
+        play sound "block.stone.break" at volume 2 at pitch 1 - loop-value / 40 at {_target}
+        play sound "block.netherrack.break" at volume 2 at pitch 1 - loop-value / 40 at {_target}
+        play sound "block.note_block.didgeridoo" at volume 2 at pitch 1.75 - loop-value / 20 at {_target}
+
+        set yaw of {_target} to loop-value * 6
+        rotateOnRollAxis({_displays::*}, 6, vector(1, 0, 0))
+
+        teleport {_root} to location {@drop-height} - loop-value * {@drop-height} / 20 above {_target}
+
+        set yaw of {_skull-display} to loop-value * 7.2
+        set yaw of {_ring-display} to loop-value * 7.2
+
+        if loop-value < 20:
+            set {_opacity} to -127 + (loop-value * (127 - 1) / 20)
+            set display opacity of {_skull-display} to {_opacity}
+            set display opacity of {_ring-display} to {_opacity}
+
+        set pitch of {_skull-display} to -90
+        wait 1 tick
+
+    kill {_ring-display}
+    kill {_skull-display}
+    kill {_root}
+
+
+    set {_impact-block} to block 1 below {_target}
+
+    loop getLivingEntities({_p}, {_target}, {@radius}) where [input != {_p}]:
+        makeDamage({_p}, loop-value, {powerAttributes::meteor-strike::impact-damage}, "meteor-strike;impact")
+
+    create explosion of force 2 at {_target}
+    fallingDebris({_target}, {@radius}, 1.5)
+    #spawnFloatingBlockCluster(location 1.5 below {_target}, {heads::light-gray-orb}, 16, 7, 60, 0.5)
+
+    loop 16 times:
+        set {_v} to spherical vector radius {@radius}, yaw loop-value * (360 / 16), pitch 0
+        meteorSpawnCraterBlock({_target} ~ {_v}, loop-value)
+
+    set {_target2} to {_target}
+    set y-coord of {_target2} to y-coord of {_impact-block}
+
+    groundShakeArea({_target2}, {@radius}, {@crater-lifetime} ticks, (gilded blackstone, blackstone, netherrack, magma block))
+    set {_blocks::*} to (blocks in radius {@radius} of {_impact-block}) where [y-coord of input = y-coord of {_impact-block}]
+
+    play sound "block.fire.extinguish" at volume 2 at pitch 1 at {_target}
+    play sound "item.trident.thunder" at volume 2 at pitch 1.5 at {_target}
+
+    loop {@crater-lifetime} times:
+
+        loop {_blocks::*}:
+            loop getLivingEntities({_p}, loop-value-2, 1) where [input != {_p}]:
+                set {_ent} to loop-value-3
+
+                if time since {-hit::%{_p}%::%{_ent}%::meteor-burn} is set:
+                    if time since {-hit::%{_p}%::%{_ent}%::meteor-burn} < 0.5 seconds:
+                        continue
+
+                set {-hit::%{_p}%::%{_ent}%::meteor-burn} to now
+                #(y-coord of {_ent}) - (y-coord of {_impact-block}) <= 1
+
+                makeDamage({_p}, {_ent}, {powerAttributes::meteor-strike::burn-damage}, "meteor-strike;burn")
+                play sound "block.fire.extinguish" at volume 2 at pitch 1.5 at {_ent}
+                draw 3 lava particle with offset vector(0.5, 0.5, 0.5) with particle speed 0.25 at {_ent}
+
+        loop {_blocks::*}:
+            chance of 0.5%:
+                draw 1 lava particle at loop-value-2
+                #draw 1 campfire cosy smoke at loop-value-2 with extra 0.1
+        wait 1 tick

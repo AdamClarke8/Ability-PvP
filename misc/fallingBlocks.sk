@@ -1,0 +1,2 @@
+on falling block land:
+	cancel event

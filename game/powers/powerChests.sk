@@ -1,0 +1,526 @@
+function spawnPowerChest(l: location, marker: entity, rarity: text = "uncommon"):
+
+    spawn item display at {_l}:
+        set {_display} to event-entity
+        set item of {_display} to {heads::%{_rarity}%-chest}
+        if {_rarity} = "legendary":
+            set display scale of {_display} to vector(3.5, 3.5, 3.5)
+            set display translation of {_display} to vector(0, 0.75, 0)
+            add nbt compound from "{Glowing:1b}" to nbt compound of {_display}
+            make {_display} glow orange for all players
+            set view range of {_display} to 256
+        else:
+            set display scale of {_display} to vector(2.5, 2.5, 2.5)
+            set display translation of {_display} to vector(0, 0.5, 0)
+        set teleport duration of {_display} to 1 tick
+        set interpolation duration of {_display} to 1 tick
+
+    spawn interaction at {_l}:
+        set {_hitbox} to event-entity
+        set interaction width of {_hitbox} to 3
+        set interaction height of {_hitbox} to 3
+        set {-is-power-chest-interaction::%{_hitbox}%} to true
+        set {-power-chest-display::%{_hitbox}%} to {_display}
+
+    set {_angle} to 4.5
+    set {_amplitude} to 0.25
+    set {_frequency} to 4.5
+
+    while {_display} is alive:
+
+        if {_marker} is not alive:
+            kill {_display}
+            exit loop
+
+        set interpolation delay of {_display} to 0 ticks
+        add {_angle} to yaw of {_l}
+        teleport {_display} to location 1 + {_amplitude} * sin(loop-counter * {_frequency}) above {_l}
+        draw 1 enchanting particle with offset vector(1, 1, 1) with particle speed 0.5 at {_display}
+
+        loop getPlayers({_l}, 2.5):
+
+            openPowerChest(loop-value, {_rarity})
+            play sound "block.chest.open" at volume 3 at pitch 1.2 at {_l}
+            play sound "entity.experience_orb.pickup" at volume 2 at pitch 1 at {_l}
+
+            kill {_display}
+            exit loop
+
+        #rotate {_display} around y-axis by {_angle} degrees
+        wait 1 tick
+
+    kill {_hitbox}
+
+on script load:
+    delete {powers-in-pool::*}
+    delete {probability::*}
+
+    # PLAINS
+    set {powers-in-pool::plains::uncommon::popcorn} to 1
+    set {powers-in-pool::plains::uncommon::minecart} to 1
+    set {powers-in-pool::plains::uncommon::stalagmites} to 1
+    set {powers-in-pool::plains::uncommon::barrel} to 1
+    set {powers-in-pool::plains::uncommon::cake-platform} to 1
+    set {powers-in-pool::plains::uncommon::hook} to 2
+    set {powers-in-pool::plains::uncommon::smoke-bomb} to 1
+    set {powers-in-pool::plains::uncommon::petrify} to 1
+    set {powers-in-pool::plains::uncommon::windmill} to 1
+    set {powers-in-pool::plains::uncommon::ice-in-a-bottle} to 1
+    #set {powers-in-pool::mushroom::uncommon::vent} to 1
+    set {powers-in-pool::plains::uncommon::fist} to 1
+    set {powers-in-pool::plains::uncommon::landmines} to 1
+
+    set {powers-in-pool::plains::rare::burger} to 1 
+    set {powers-in-pool::plains::rare::giant-mushroom} to 1
+    set {powers-in-pool::plains::rare::missile} to 1
+    set {powers-in-pool::plains::rare::piano} to 1
+    set {powers-in-pool::plains::rare::traffic-lights} to 1
+    set {powers-in-pool::plains::rare::lightning-rod} to 1
+    set {powers-in-pool::plains::rare::nether-portal} to 1
+    set {powers-in-pool::plains::rare::fire-in-a-bottle} to 1
+    set {powers-in-pool::plains::rare::mighty-mace} to 1
+    set {powers-in-pool::plains::rare::drill} to 1
+    set {powers-in-pool::plains::rare::blender} to 1
+    set {powers-in-pool::plains::rare::shulker-box} to 1
+    
+    set {powers-in-pool::plains::epic::magic-stew} to 1
+    set {powers-in-pool::plains::epic::sledgehammer} to 1
+    set {powers-in-pool::plains::epic::giant-snowball} to 1
+    set {powers-in-pool::plains::epic::flying-machine} to 1
+    set {powers-in-pool::plains::epic::tennis-cannon} to 1
+    set {powers-in-pool::plains::epic::meteor-strike} to 1
+    set {powers-in-pool::plains::epic::magmarizer} to 1
+    set {powers-in-pool::plains::epic::rocket} to 1
+    set {powers-in-pool::plains::epic::hot-air-balloon} to 1
+    
+    set {powers-in-pool::plains::legendary::dave-9000} to 1
+    set {powers-in-pool::plains::legendary::ufo} to 1
+    set {powers-in-pool::plains::legendary::steamroller} to 1
+
+    set {probability::plains::uncommon} to 50
+    set {probability::plains::rare} to 35
+    set {probability::plains::epic} to 12
+    set {probability::plains::legendary} to 3
+
+    # MUSHROOM
+    set {powers-in-pool::mushroom::uncommon::popcorn} to 2
+    set {powers-in-pool::mushroom::uncommon::minecart} to 3
+    set {powers-in-pool::mushroom::uncommon::stalagmites} to 2
+    set {powers-in-pool::mushroom::uncommon::barrel} to 2
+    set {powers-in-pool::mushroom::uncommon::cake-platform} to 3
+    set {powers-in-pool::mushroom::uncommon::hook} to 2
+    set {powers-in-pool::mushroom::uncommon::smoke-bomb} to 3
+    set {powers-in-pool::mushroom::uncommon::petrify} to 2
+    set {powers-in-pool::mushroom::uncommon::windmill} to 2
+    set {powers-in-pool::mushroom::uncommon::ice-in-a-bottle} to 2
+    #set {powers-in-pool::mushroom::uncommon::vent} to 1
+    set {powers-in-pool::mushroom::uncommon::fist} to 2
+    set {powers-in-pool::mushroom::uncommon::landmines} to 2
+
+    set {powers-in-pool::mushroom::rare::burger} to 1 
+    set {powers-in-pool::mushroom::rare::giant-mushroom} to 1
+    set {powers-in-pool::mushroom::rare::missile} to 1
+    set {powers-in-pool::mushroom::rare::piano} to 1
+    set {powers-in-pool::mushroom::rare::traffic-lights} to 1
+    set {powers-in-pool::mushroom::rare::lightning-rod} to 1
+    set {powers-in-pool::mushroom::rare::nether-portal} to 1
+    set {powers-in-pool::mushroom::rare::fire-in-a-bottle} to 1
+    set {powers-in-pool::mushroom::rare::mighty-mace} to 1
+    set {powers-in-pool::mushroom::rare::drill} to 1
+    set {powers-in-pool::mushroom::rare::blender} to 1
+    set {powers-in-pool::mushroom::rare::shulker} to 1
+    
+    set {powers-in-pool::mushroom::epic::magic-stew} to 1
+    set {powers-in-pool::mushroom::epic::sledgehammer} to 1
+    set {powers-in-pool::mushroom::epic::giant-snowball} to 1
+    set {powers-in-pool::mushroom::epic::flying-machine} to 1
+    set {powers-in-pool::mushroom::epic::tennis-cannon} to 1
+    set {powers-in-pool::mushroom::epic::meteor-strike} to 1
+    set {powers-in-pool::mushroom::epic::magmarizer} to 1
+    set {powers-in-pool::mushroom::epic::rocket} to 1
+    set {powers-in-pool::mushroom::epic::hot-air-balloon} to 1
+    
+    set {powers-in-pool::mushroom::legendary::dave-9000} to 1
+    set {powers-in-pool::mushroom::legendary::ufo} to 1
+    set {powers-in-pool::mushroom::legendary::steamroller} to 1
+
+    set {probability::mushroom::uncommon} to 50
+    set {probability::mushroom::rare} to 35
+    set {probability::mushroom::epic} to 12
+    set {probability::mushroom::legendary} to 3
+
+
+    # DESERT
+    set {powers-in-pool::desert::uncommon::popcorn} to 2
+    set {powers-in-pool::desert::uncommon::minecart} to 3
+    set {powers-in-pool::desert::uncommon::stalagmites} to 2
+    set {powers-in-pool::desert::uncommon::barrel} to 2
+    set {powers-in-pool::desert::uncommon::cake-platform} to 3
+    set {powers-in-pool::desert::uncommon::hook} to 2
+    set {powers-in-pool::desert::uncommon::smoke-bomb} to 3
+    set {powers-in-pool::desert::uncommon::petrify} to 2
+    set {powers-in-pool::desert::uncommon::windmill} to 2
+    set {powers-in-pool::desert::uncommon::ice-in-a-bottle} to 2
+    #set {powers-in-pool::desert::uncommon::vent} to 1
+    set {powers-in-pool::desert::uncommon::fist} to 2
+    set {powers-in-pool::desert::uncommon::landmines} to 2
+
+    set {powers-in-pool::desert::rare::burger} to 1 
+    set {powers-in-pool::desert::rare::giant-desert} to 1
+    set {powers-in-pool::desert::rare::missile} to 1
+    set {powers-in-pool::desert::rare::piano} to 1
+    set {powers-in-pool::desert::rare::traffic-lights} to 1
+    set {powers-in-pool::desert::rare::lightning-rod} to 1
+    set {powers-in-pool::desert::rare::nether-portal} to 1
+    set {powers-in-pool::desert::rare::fire-in-a-bottle} to 1
+    set {powers-in-pool::desert::rare::mighty-mace} to 1
+    set {powers-in-pool::desert::rare::drill} to 1
+    set {powers-in-pool::desert::rare::blender} to 1
+    set {powers-in-pool::desert::rare::shulker} to 1
+    
+    set {powers-in-pool::desert::epic::magic-stew} to 1
+    set {powers-in-pool::desert::epic::sledgehammer} to 1
+    set {powers-in-pool::desert::epic::giant-snowball} to 1
+    set {powers-in-pool::desert::epic::flying-machine} to 1
+    set {powers-in-pool::desert::epic::tennis-cannon} to 1
+    set {powers-in-pool::desert::epic::meteor-strike} to 1
+    set {powers-in-pool::desert::epic::magmarizer} to 1
+    set {powers-in-pool::desert::epic::rocket} to 1
+    set {powers-in-pool::desert::epic::hot-air-balloon} to 1
+    
+    set {powers-in-pool::desert::legendary::dave-9000} to 1
+    set {powers-in-pool::desert::legendary::ufo} to 1
+    set {powers-in-pool::desert::legendary::steamroller} to 1
+
+    set {probability::desert::uncommon} to 50
+    set {probability::desert::rare} to 35
+    set {probability::desert::epic} to 12
+    set {probability::desert::legendary} to 3
+
+function openPowerChest(p: player, rarity: text):
+    
+    set {_lobby} to getLobby({_p})
+
+    set {_rand-num} to random integer between 1 and 100
+    #set {_total} to 0
+
+    set {_map} to {current-map}
+    #loop indices of {probability::%{_map}%::*}:
+    #    set {_prob} to {probability::%{_map}%::%loop-value%}
+    #    {_rand-num} is between {_total} and {_total} + {_prob}:
+    #        set {_chosen-rarity} to loop-value
+    #        exit loop
+    #    add {_prob} to {_total}
+
+    #broadcast "%{_total}%"
+
+
+    if {_rarity} = "legendary":
+
+        set {_total} to 0
+        loop (indices of {-powers-this-round::%{_lobby}%::%{_rarity}%::*}):
+            set {_count} to {-powers-this-round::%{_lobby}%::%{_rarity}%::%loop-value%}
+            add {_count} to {_total}
+
+        set {_rand-num} to random integer between 1 and {_total}
+        #broadcast "%{_total}%"
+        set {_total} to 0
+
+        loop indices of {-powers-this-round::%{_lobby}%::%{_rarity}%::*}:
+            set {_prob} to {-powers-this-round::%{_lobby}%::%{_rarity}%::%loop-value%}
+            {_rand-num} is between {_total} and {_total} + {_prob}:
+                set {_power-name} to loop-value
+                exit loop
+            add {_prob} to {_total}
+
+    else:
+
+        set {_total} to 0
+        loop (indices of {-powers-this-round::%{_lobby}%::%{_rarity}%::*}):
+            set {_count} to {-powers-this-round::%{_lobby}%::%{_rarity}%::%loop-value%}
+            add {_count} to {_total}
+
+        loop {powers-selected::%{_p}%::%{_rarity}%::*}:
+            add 2 to {_total}
+
+        set {_rand-num} to random integer between 1 and {_total}
+        #broadcast "%{_total}%"
+        set {_total} to 0
+
+        loop (indices of {-powers-this-round::%{_lobby}%::%{_rarity}%::*}):
+            set {_prob} to {-powers-this-round::%{_lobby}%::%{_rarity}%::%loop-value%}
+            {_rand-num} is between {_total} and {_total} + {_prob}:
+                set {_power-name} to loop-value
+                exit loop
+            add {_prob} to {_total}
+
+        {_power-name} is not set
+        loop {powers-selected::%{_p}%::%{_rarity}%::*}:
+            set {_prob} to 2
+            {_rand-num} is between {_total} and {_total} + {_prob}:
+                set {_power-name} to loop-value
+                exit loop
+            add {_prob} to {_total}
+
+    #broadcast "%{_total}%"
+    #broadcast "%{_power-name}%"
+    set {_stack-size} to {powerAttributes::%{_power-name}%::stack-size}
+    #broadcast "%{_stack-size}%"
+    give {_stack-size} of getPower({_power-name}) to {_p}
+
+
+function powerChestExists(l: location) :: boolean:
+    loop interactions in radius 3 of {_l} where [{-is-power-chest-interaction::%input%} = true]:
+        return true
+    return false
+
+function initPowerChestLocations(lobby: text, map: text):
+    set {_centre} to getMapCentre({_lobby}, {_map})
+    set {_time} to now
+
+    delete {power-chest-locs::%{_lobby}%::%{_map}%::*}
+
+    loop {island-centre::%{_lobby}%::%{_map}%::*} and {_centre}:
+        loop blocks in radius 64 of loop-value:
+            if loop-value-2 = lime concrete:
+                set {power-chest-locs::%{_lobby}%::%{_map}%::uncommon::%location of loop-value-2%} to 1
+            else if loop-value-2 = light blue concrete:
+                set {power-chest-locs::%{_lobby}%::%{_map}%::rare::%location of loop-value-2%} to 1
+            else if loop-value-2 = purple concrete:
+                set {power-chest-locs::%{_lobby}%::%{_map}%::epic::%location of loop-value-2%} to 1
+            else if loop-value-2 = orange concrete:
+                set {power-chest-locs::%{_lobby}%::%{_map}%::legendary::%location of loop-value-2%} to 1
+
+    broadcast "&aReloaded chest locations for map &e%{_map}% &ain lobby &e%{_lobby}%&a."
+    broadcast "&bTime taken to reload: &e%time since {_time}%"
+
+function initPartyCannonLocations(lobby: text, map: text):
+    set {_centre} to getMapCentre({_lobby}, {_map})
+    set {_time} to now
+
+    delete {party-cannon-locs::%{_lobby}%::%{_map}%::*}
+
+    loop {island-centre::%{_lobby}%::%{_map}%::*} and {_centre}:
+        loop blocks in radius 64 of loop-value:
+            loop-value-2 = a diamond block
+            set {party-cannon-locs::%{_lobby}%::%{_map}%::%location of loop-value-2%} to 1
+
+    broadcast "&aReloaded cannon locations for map &e%{_map}% &ain world &e%{_lobby}%&a."
+    broadcast "&bTime taken to reload: &e%time since {_time}%"
+
+function parseIndexAsLocation(idx: text) :: location:
+    set {_split::*} to {_idx} split at ","
+    set {_split2::*} to {_split::1} split at ":"
+    set {_lobby} to {_split2::1}
+    set {_x} to {_split2::2} parsed as number
+    set {_y} to {_split::2} parsed as number
+    set {_z} to {_split::3} parsed as number
+    set {_l} to location({_x}, {_y}, {_z}, {_lobby})
+    return {_l}
+
+function loadPowerChests(lobby: text, map: text):
+
+    set {_centre} to getMapCentre({_lobby}, {_map})
+
+    loop {_centre} and {island-centre::%{_lobby}%::%{_map}%::*}:
+        loop all markers in radius 64 of loop-value:
+            if {-is-power-chest-marker::%loop-value-2%} = true:
+                kill loop-value-2
+        loop all interactions in radius 64 of loop-value:
+            if {-is-power-chest-interaction::%loop-value-2%} = true:
+                kill loop-value-2
+
+    wait 300 ticks
+    send "&aChests have started deploying." to getPlayersInSameLobby({_lobby})
+
+    loop "uncommon", "rare", "epic" and "legendary":
+        loop shuffled indices of {power-chest-locs::%{_lobby}%::%{_map}%::%loop-value%::*}:
+            set {_idx} to loop-value-2
+            set {_chest-l} to parseIndexAsLocation({_idx})
+            wait 20 ticks
+            if gameIsRunning({_lobby}) = false:
+                exit all loops
+            initPowerChest({_chest-l}, loop-value-1, {_lobby})
+
+function loadPartyCannons(lobby: text, map: text):
+    set {_centre} to getMapCentre({_lobby}, {_map})
+    loop {_centre} and {island-centre::%{_lobby}%::%{_map}%::*}:
+        loop all markers in radius 64 of loop-value:
+            if {-is-party-cannon-marker::%loop-value-2%} = true:
+                kill loop-value-2
+        loop all interactions in radius 64 of loop-value:
+            if {-is-party-cannon-interaction::%loop-value-2%} = true:
+                kill loop-value-2
+    loop indices of {party-cannon-locs::%{_lobby}%::%{_map}%::*}:
+        set {_idx} to loop-value
+        set {_cannon-l} to parseIndexAsLocation({_idx})
+        spawnPartyCannon({_cannon-l})
+
+
+function animateLegendaryChestBeam(display: entity, lifetime: timespan = 200 ticks):
+
+    set {_l} to location of {_display}
+
+    set {_orig-scale} to display scale of {_display}
+    set {_orig-translation} to display translation of {_display}
+    set {_ticks} to ticks of {_lifetime}
+
+    draw 1 white flash particle at {_l}
+
+    play sound "block.trial_spawner.spawn_item_begin" at volume 3 at pitch 1 at {_l}
+    play sound "block.trial_spawner.about_to_spawn_item" at volume 3 at pitch 1.5 at {_l}
+
+    loop {_ticks} times:
+
+        set interpolation delay of {_display} to 0 ticks
+
+        if loop-counter = {_ticks} - 20:
+            play sound "block.beacon.deactivate" at volume 3 at pitch 2 at {_l}
+            play sound "entity.breeze.death" at volume 3 at pitch 2 at {_l}
+            play sound "entity.warden.sonic_charge" at volume 3 at pitch 1.52 at {_l}
+            draw 1 white flash particle at {_l}
+            draw 100 portal particle with particle speed 1 at {_l}
+
+        if loop-counter < {_ticks} - 20:
+            set {_scale-factor} to 3.5 * sin(90 * loop-counter / ({_ticks} - 20)) ^ 0.5
+            set display scale of {_display} to {_orig-scale} * {_scale-factor}
+            set display translation of {_display} to {_orig-translation} * {_scale-factor}
+            play sound "entity.illusioner.prepare_blindness" at volume 1.5 at pitch 0.5 + loop-counter / {_ticks} at {_l}
+            play sound "entity.breeze.charge" at volume 1.5 at pitch 0.5 + loop-counter / {_ticks} at {_l}
+            loop 4 times:
+                set {_v} to spherical vector radius 2.5 + 4 * (loop-value-1) / {_ticks}, yaw ((loop-value-1) * 18) * (1 + loop-counter-1 / {_ticks}) + (loop-value-2) * 4.5 * (1 + loop-counter-1 / {_ticks}), pitch 0
+                set {_draw-l} to {_l} ~ {_v}
+                draw 1 poof particle with particle speed 0 at {_draw-l}
+                draw 1 dust plume particle with particle speed 0 at {_draw-l}
+
+        else:
+            set {_scale-factor} to 3.5 * (cos(90 * (loop-counter - ({_ticks} - 20)) / 20) ^ 0.5)
+            set display scale of {_display} to {_orig-scale} * {_scale-factor}
+            set display translation of {_display} to {_orig-translation} * {_scale-factor}
+
+        set yaw of {_display} to loop-counter * 9
+
+        draw 5 firework particle with offset vector(1, 1, 1) with particle speed 0.25 at {_l}
+        draw 5 portal particle with offset vector(1, 1, 1) with particle speed 0.25 at {_l}
+        draw 5 enchanting particle with offset vector(1, 1, 1) with particle speed 0.25 at {_l}
+
+        wait 1 tick
+
+function legendaryChestBeam(l: location) :: entity:
+    spawn item display at {_l}:
+        set {_display} to event-entity
+        #set item of {_display} to stripped pale oak wood
+        set item of {_display} to white concrete
+        set display scale of {_display} to vector(0.75, 256, 0.75)
+        set display translation of {_display} to vector(0, 128, 0)
+        set sky light override of {_display} to 15
+        set teleport duration of {_display} to 1 tick
+        set interpolation duration of {_display} to 1 tick
+        set pitch of {_display} to 0
+        set view range of {_display} to 256
+        add nbt compound from "{Glowing:1b}" to nbt compound of {_display}
+    animateLegendaryChestBeam({_display})
+    return {_display}
+
+function initPowerChest(l: location, rarity: text, lobby: text):
+
+    spawn marker at {_l}:
+        set {_marker} to event-entity
+        set {-is-power-chest-marker::%{_marker}%} to true
+
+    #spawn text display at location 3 above {_l}:
+    #    set {_timer-display} to event-entity
+    #    set display scale of {_timer-display} to vector(1.5, 1.5, 1.5)
+    #    set line width of {_timer-display} to 1000
+    #    set billboard of {_timer-display} to vertical
+
+    set {_chest-l} to location 1 above {_l}
+
+    if {_rarity} = "legendary":
+        set {_ticks-until-spawn} to 3600
+        wait "%random integer between 1 and {_ticks-until-spawn} * 3% ticks" parsed as timespan
+        #set {_ticks-until-spawn} to 10
+
+    else:
+        set {_ticks-until-spawn} to 200
+
+    while {_marker} is alive:
+        set text of {_timer-display} to ""
+
+        if gameIsRunning({_lobby}) = false:
+            exit all loops
+
+        if {_rarity} = "legendary":
+
+            set {_beam} to legendaryChestBeam(location 0.5 above {_l})
+            send "&eA legendary chest is spawning!" to getPlayersInSameLobby({_lobby})
+
+            wait 200 ticks
+
+            kill {_beam}
+            strike lightning effect at {_l}
+            create explosion of force 2 at {_l}
+            play sound "entity.ender_dragon.growl" at volume 3 at pitch 1 to getPlayersInSameLobby({_lobby})
+            play sound "item.trident.thunder" at volume 3 at pitch 1 at {_l}
+
+
+        spawnPowerChest({_chest-l}, {_marker}, {_rarity})
+
+        while powerChestExists({_chest-l}) = true:
+
+            if gameIsRunning({_lobby}) = false:
+                exit all loops
+
+            if {_marker} is not alive:
+                exit loop
+
+            wait 1 tick
+
+        if {_rarity} = "legendary":
+            kill {_beam::*}
+        
+        loop {_ticks-until-spawn} times:
+    
+            if {_marker} is not alive:
+                exit loop
+
+            #if mod(loop-value, 2) = 0:
+            #    if mod(loop-value, 20) = 0:
+            #        set text of {_timer-display} to "&eRespawning in: %(200 - loop-value) / 20%.0 seconds"
+            #    else:
+            #        set text of {_timer-display} to "&eRespawning in: %(200 - loop-value) / 20% seconds"
+            wait 1 tick
+
+    kill {_timer-display}
+
+#on script load:
+
+    #loop {powerChestLocs::test-map::*}:
+    #    kill block displays in radius 3 of loop-value
+
+    #delete {powerChestLocs::test-map::*}
+
+    #set {powerChestLocs::test-map::1} to location(96.5, 72.5, 13.5, "game")
+    #set {powerChestLocs::test-map::2} to location(93.5, 72.5, 7.5, "game")
+    #set {powerChestLocs::test-map::3} to location(93.5, 72.5, 7.5, "game")
+    #set {powerChestLocs::test-map::4} to location(97.5, 71.5, 1.5, "game")
+    #set {powerChestLocs::test-map::5} to location(113.5, 71.5, -12.5, "game")
+    #set {powerChestLocs::test-map::6} to location(118.5, 71.5, -11.5, "game")
+    #set {powerChestLocs::test-map::7} to location(124.5, 68.5, -7.5, "game")
+    #set {powerChestLocs::test-map::8} to location(131.5, 68.5, 14.5, "game")
+    #set {powerChestLocs::test-map::9} to location(127.5, 68.5, 19.5, "game")
+    #set {powerChestLocs::test-map::10} to location(122.5, 68.5, 22.5, "game")
+
+    #set {spawnChests} to false
+    #wait 40 ticks
+    #set {spawnChests} to true
+    #while {spawnChests} = true:
+    #    wait 5 ticks
+    #    size of all players > 0
+    #    loop shuffled {powerChestLocs::%{current-map}%::*}:
+    #        if powerChestExists(loop-value) = false:
+    #            spawnPowerChest(location 1.5 above loop-value)
+    #        loop 10 times:
+    #            {spawnChests} = false:
+    #                exit all loops
+    #            wait 5 ticks

@@ -1,0 +1,1302 @@
+options:
+    scale: 200
+    voting-time: 200
+    duration: 300
+    power-screen-duration: 140
+    results-screen-duration: 140
+    prefix: &b&lSERVER &7»
+    shadow-width: 0.3
+    bar-separation: 0.6
+
+on script load:
+    set {gamemode-enum::1} to "king-of-the-hill"
+    set {gamemode-enum::2} to "free-for-all"
+    set {gamemode-enum::3} to "team-deathmatch"
+
+    set {formatted-gamemode-msg::king-of-the-hill} to "&e&lKING OF THE HILL"
+    set {formatted-gamemode-msg::free-for-all} to "&f&lFREE FOR ALL"
+    set {formatted-gamemode-msg::team-deathmatch} to "&9&lTEAM &c&lDEATHMATCH"
+
+    set {map-enum::1} to "mushroom"
+    set {map-enum::2} to "desert"
+    set {map-enum::3} to "ice"
+
+    set {formatted-map-msg::mushroom} to "&d&lMUSHROOM"
+    set {formatted-map-msg::desert} to "&e&lDESERT"
+    set {formatted-map-msg::ice} to "&b&lICE"
+
+local function floatIn(display: entity):
+    set {-floating-in::%{_display}%} to true
+    set {_orig-translation} to display translation of {_display}
+    set interpolation duration of {_display} to 1 tick
+    loop 20 times:
+        set interpolation delay of {_display} to 0 ticks
+        set display opacity of {_display} to -127 + (loop-value * (127 - 1) / 20)
+        set x-component of display translation of {_display} to (x-component of {_orig-translation}) - 1 + easeOutBounce(loop-value / 20)
+        wait 1 tick
+    set interpolation duration of {_display} to 0 ticks
+    set display translation of {_display} to {_orig-translation}
+    delete {-floating-in::%{_display}%}
+
+local function shrinkOut(display: entity):
+    set {-shrinking-out::%{_display}%} to true
+    set {_orig-scale} to display scale of {_display}
+    set interpolation duration of {_display} to 1 tick
+    loop 20 times:
+        set {_scale-factor} to cos(90 * loop-value / 20) ^ 0.75
+        set interpolation delay of {_display} to 0 ticks
+        set display scale of {_display} to {_scale-factor} * {_orig-scale}
+        wait 1 tick
+    set interpolation duration of {_display} to 0 ticks
+    delete {-shrinking-out::%{_display}%}
+    wait 1 tick
+    set display scale of {_display} to {_orig-scale}
+
+local function highlight(display: entity):
+    while {-animation::%{_display}%} = true:
+        wait 1 tick
+    wait 1 tick
+    set interpolation duration of {_display} to 1 tick
+    set {_orig-scale} to display scale of {_display}
+    loop 30 times:
+        set display scale of {_display} to 1.35 * {_orig-scale} * (sin(90 * loop-value / 30) ^ 0.5)
+        set interpolation delay of {_display} to 0 ticks
+        set {_angle} to 2.5 * cos(360 * loop-value / 30)
+        rotate {_display} around z-axis by {_angle}
+        wait 1 tick
+    set interpolation duration of {_display} to 0 ticks
+    set display scale of {_display} to 1.35 * {_orig-scale}
+
+function overlayDisplayLoop(p: player, display: entity):
+    while {_display} is alive:
+        make {_display} disappear for (all players where [input != {_p}])
+        loop {-overlay-displays::%uuid of {_display}%::*}:
+            set interpolation delay of loop-value to 0 ticks
+            set yaw of loop-value to yaw of {_display}
+            make loop-value disappear for (all players where [input != {_p}])
+        wait 1 tick
+    kill {-overlay-displays::%uuid of {_display}%::*}
+    delete {-overlay-displays::%uuid of {_display}%::*}
+
+function spawnOverlayDisplay(p: player, l: location) :: entity:
+    spawn text display at {_l}:
+        set {_display} to event-entity
+        set color of {_display} to rgb(0, 0, 0, 60)
+        set text of {_display} to "  "
+        set display scale of {_display} to vector({@scale}, {@scale}, {@scale})
+        set display translation of {_display} to vector(0, {@scale} * -0.125, -2)
+        set sky light override of {_display} to 15
+        set interpolation duration of {_display} to 1 ticks
+        set teleport duration of {_display} to 1 ticks
+        set billboard of {_display} to vertical
+    make {_display} ride {-camera-stand::%{_p}%}
+    overlayDisplayLoop({_p}, {_display})
+    #floatIn({_display})
+    return {_display}
+
+function layerTextDisplay(p: player, parent: entity, msg: text, size: number, translation: vector, float-in: boolean = true) :: entity:
+    spawn text display at location of {_parent}:
+        set {_display} to event-entity
+        set color of {_display} to rgb(255, 255, 255, 0)
+        set text of {_display} to {_msg}
+        set display scale of {_display} to vector({_size}, {_size}, {_size})
+        set display translation of {_display} to (display translation of {_parent}) + {_translation} + vector(0, {@scale} / 8, 0.25)
+        set sky light override of {_display} to 15
+        set interpolation duration of {_display} to 1 ticks
+        set teleport duration of {_display} to 1 tick
+        set billboard of {_display} to vertical
+        set line width of {_display} to 1000
+    add {_display} to {-overlay-displays::%uuid of {_parent}%::*}
+    make {_display} ride (vehicle of {_parent})
+    make {_display} disappear for (players where [input != {_p}])
+    if {_float-in} = true:
+        floatIn({_display})
+    return {_display}
+
+function layerItemDisplay(p: player, parent: entity, item: item type, size: number, translation: vector) :: entity:
+    spawn item display at location of {_parent}:
+        set {_display} to event-entity
+        set item of {_display} to {_item}
+        if {_item} = a player head:
+            set display scale of {_display} to 1.25 * vector({_size}, {_size}, {_size})
+        else:
+            set display scale of {_display} to vector({_size}, {_size}, {_size})
+        set display translation of {_display} to (display translation of {_parent}) + {_translation} + vector(0, {@scale} / 8, 0.25)
+        set interpolation duration of {_display} to 1 ticks
+        set teleport duration of {_display} to 1 ticks
+    add {_display} to {-overlay-displays::%uuid of {_parent}%::*}
+    make {_display} ride (vehicle of {_parent})
+    make {_display} disappear for (players where [input != {_p}])
+    floatIn({_display})
+    return {_display}
+
+local function getVotesGamemode(gamemode: text, lobby: text) :: number:
+    return sum({-gamemode-votes::%{_lobby}%::%{_gamemode}%::*}) ? 0
+
+local function addVoteGamemode(p: player, gamemode: text, lobby: text):
+    set {-gamemode-votes::%{_lobby}%::%{_gamemode}%::%{_p}%} to 1
+    updateVotesGamemode({_gamemode}, {_lobby})
+
+local function removeVoteGamemode(p: player, gamemode: text, lobby: text) :: text:
+    delete {-gamemode-votes::%{_lobby}%::%{_gamemode}%::%{_p}%}
+    updateVotesGamemode({_gamemode}, {_lobby})
+
+local function updateAllVotesGamemode(lobby: text):
+    loop {gamemode-enum::*}:
+        updateVotesGamemode(loop-value, {_lobby})
+
+local function updateVotesGamemode(gamemode: text, lobby: text):
+    set {_text} to ""
+
+    loop indices of {-gamemode-votes::%{_lobby}%::%{_gamemode}%::*}:
+        set {_player} to loop-value parsed as player
+        set {_head} to object text component with player head from {_player}
+        set {_text} to merge components ({_text} and {_head}) joined with " "
+
+    loop getPlayers({_lobby}):
+
+        set {_vote-display} to {-screen-display::%loop-player%::%{_gamemode}%-gamemode-votes}
+        set text of {_vote-display} to "&f%getVotesGamemode({_gamemode}, {_lobby})% votes"
+        
+        set {_heads-display} to {-screen-display::%loop-player%::%{_gamemode}%-gamemode-heads}
+        set display text component of {_heads-display} to {_text}
+
+local function deselectGamemode(p: player, gamemode-num: number, lobby: text):
+    set {_gamemode} to {gamemode-enum::%{_gamemode-num}%}
+    set {_text} to uncolored text of {-screen-display::%{_p}%::%{_gamemode}%-gamemode}
+    set text of {-screen-display::%{_p}%::%{_gamemode}%-gamemode} to "&f%{_text}%"
+
+    removeVoteGamemode({_p}, {_gamemode}, {_lobby})
+
+local function selectGamemode(p: player, gamemode: text, lobby: text):
+    set {_display} to {-screen-display::%{_p}%::%{_gamemode}%-gamemode}
+    set {_text} to uncolored text of {_display}
+    set text of {_display} to "&a%{_text}%"
+
+    addVoteGamemode({_p}, {_gamemode}, {_lobby})
+
+    {-animation::%{_display}%} is not set
+    {-floating-in::%{_display}%} != true
+
+    set {-animation::%{_display}%} to true
+
+    set {_orig-scale} to display scale of {_display}
+    set {_orig-translation} to display translation of {_display}
+
+    set interpolation duration of {_display} to 1 ticks
+
+    loop 10 times:
+        set interpolation delay of {_display} to 0 ticks
+        set {_scale-factor} to easeOutBounce(loop-value / 10)
+        set display scale of {_display} to {_orig-scale} * {_scale-factor}
+        set display translation of {_display} to {_orig-translation} * {_scale-factor}
+        wait 1 tick
+
+    set interpolation duration of {_display} to 0 ticks
+    set display scale of {_display} to {_orig-scale}
+    set display translation of {_display} to {_orig-translation}
+
+    delete {-animation::%{_display}%}
+
+local function changeGamemode(p: player, offset: number = 1, lobby: text):
+    # UPDATE PREVIOUS GAMEMODE TEXT
+
+    play sound "ui.loom.select_pattern" at volume 3 at pitch 2 to {_p}
+
+    deselectGamemode({_p}, {-gamemode-num::%{_p}%}, {_lobby})
+
+    # UPDATE GAMEMODE COUNTER
+    if {_offset} > 0:
+        loop {_offset} times:
+            set {-gamemode-num::%{_p}%} to mod({-gamemode-num::%{_p}%}, 3) + 1
+    else if {_offset} < 0:
+        loop {_offset} * -1 times:
+            set {-gamemode-num::%{_p}%} to mod({-gamemode-num::%{_p}%} - 2, 3) + 1
+
+    # UPDATE NEW GAMEMODE TEXT
+    selectGamemode({_p}, {gamemode-enum::%{-gamemode-num::%{_p}%}%}, {_lobby})
+
+function clearVoteGamemode(p: player, lobby: text):
+    deselectGamemode({_p}, {-gamemode-num::%{_p}%}, {_lobby})
+
+function initVoteGamemode(p: player, lobby: text):
+    set {_gamemode} to {gamemode-enum::%{-gamemode-num::%{_p}%}%}
+    selectGamemode({_p}, {_gamemode}, {_lobby})
+
+# MAPS
+
+local function getVotesMap(map: text, lobby: text) :: number:
+    return sum({-map-votes::%{_lobby}%::%{_map}%::*}) ? 0
+
+local function addVoteMap(p: player, map: text, lobby: text):
+    set {-map-votes::%{_lobby}%::%{_map}%::%{_p}%} to 1
+    updateVotesMap({_map}, {_lobby})
+
+local function removeVoteMap(p: player, map: text, lobby: text) :: text:
+    delete {-map-votes::%{_lobby}%::%{_map}%::%{_p}%}
+    updateVotesMap({_map}, {_lobby})
+
+local function updateAllVotesMap(lobby: text):
+    loop {map-enum::*}:
+        updateVotesMap(loop-value, {_lobby})
+
+local function updateVotesMap(map: text, lobby: text):
+    set {_text} to ""
+
+    loop indices of {-map-votes::%{_lobby}%::%{_map}%::*}:
+        set {_player} to loop-value parsed as player
+        set {_head} to object text component with player head from {_player}
+        set {_text} to merge components ({_text} and {_head}) joined with " "
+
+    loop getPlayers({_lobby}):
+
+        set {_vote-display} to {-screen-display::%loop-player%::%{_map}%-map-votes}
+        set text of {_vote-display} to "&f%getVotesMap({_map}, {_lobby})% votes"
+        
+        set {_heads-display} to {-screen-display::%loop-player%::%{_map}%-map-heads}
+
+        set display text component of {_heads-display} to {_text}
+
+local function deselectMap(p: player, map-num: number, lobby: text):
+    set {_map} to {map-enum::%{_map-num}%}
+    set {_text} to uncolored text of {-screen-display::%{_p}%::%{_map}%-map}
+    set text of {-screen-display::%{_p}%::%{_map}%-map} to "&f%{_text}%"
+
+    removeVoteMap({_p}, {_map}, {_lobby})
+
+local function selectMap(p: player, map: text, lobby: text):
+    set {_display} to {-screen-display::%{_p}%::%{_map}%-map}
+    set {_text} to uncolored text of {_display}
+    set text of {_display} to "&a%{_text}%"
+
+    addVoteMap({_p}, {_map}, {_lobby})
+
+    {-animation::%{_display}%} is not set
+    {-floating-in::%{_display}%} != true
+
+    set {-animation::%{_display}%} to true
+
+    set {_orig-scale} to display scale of {_display}
+    set {_orig-translation} to display translation of {_display}
+
+    set interpolation duration of {_display} to 1 ticks
+
+    loop 10 times:
+        set interpolation delay of {_display} to 0 ticks
+        set {_scale-factor} to easeOutBounce(loop-value / 10)
+        set display scale of {_display} to {_orig-scale} * {_scale-factor}
+        set display translation of {_display} to {_orig-translation} * {_scale-factor}
+        wait 1 tick
+
+    set interpolation duration of {_display} to 0 ticks
+    set display scale of {_display} to {_orig-scale}
+    set display translation of {_display} to {_orig-translation}
+
+    delete {-animation::%{_display}%}
+
+local function changeMap(p: player, offset: number = 1, lobby: text):
+    # UPDATE PREVIOUS GAMEMODE TEXT
+
+    play sound "ui.loom.select_pattern" at volume 3 at pitch 2 to {_p}
+
+    deselectMap({_p}, {-map-num::%{_p}%}, {_lobby})
+
+    # UPDATE GAMEMODE COUNTER
+    if {_offset} > 0:
+        loop {_offset} times:
+            set {-map-num::%{_p}%} to mod({-map-num::%{_p}%}, 3) + 1
+    else if {_offset} < 0:
+        loop {_offset} * -1 times:
+            set {-map-num::%{_p}%} to mod({-map-num::%{_p}%} - 2, 3) + 1
+
+    # UPDATE NEW GAMEMODE TEXT
+    selectMap({_p}, {map-enum::%{-map-num::%{_p}%}%}, {_lobby})
+
+function clearVoteMap(p: player, lobby: text):
+    deselectMap({_p}, {-map-num::%{_p}%}, {_lobby})
+
+function initVoteMap(p: player, lobby: text):
+    set {_map} to {map-enum::%{-map-num::%{_p}%}%}
+    selectMap({_p}, {_map}, {_lobby})
+
+function startScreenTicks(lobby: text, ticks: number):
+    set {-max-screen-ticks::%{_lobby}%} to {_ticks}
+    set {_time-started} to now
+    set {-screen-ticks-started::%{_lobby}%} to {_time-started}
+    setScreenTicks({_lobby}, {_ticks})
+    while {-screen-ticks::%{_lobby}%} > 0:
+        if {-screen-ticks-started::%{_lobby}%} != {_time-started}:
+            exit loop
+        set {-screen-ticks::%{_lobby}%} to {-screen-ticks::%{_lobby}%} - 1
+        wait 1 tick
+
+function setScreenTicks(lobby: text, ticks: number):
+    set {-screen-ticks::%{_lobby}%} to {_ticks}
+
+function startGamemodeSelection(lobby: text):
+
+    set {-selecting-gamemode::%{_lobby}%} to true
+    set {-voting-gamemode::%{_lobby}%} to true
+
+    loop getPlayers({_lobby}):
+        gamemodeSelectionScreen(loop-player, {_lobby})
+
+    wait 1 tick
+
+    play sound "entity.player.levelup" at volume 10 at pitch 1.2 for getPlayers({_lobby})
+    play sound "block.barrel.open" at volume 10 at pitch 1.2 to getPlayers({_lobby})
+
+    loop {@voting-time} - 1 times:
+        if mod(-1 + loop-counter, 20) = 0:
+            play sound "block.note_block.hat" at volume 10 at pitch 1 to getPlayers({_lobby})
+        wait 1 tick
+
+    delete {-voting-gamemode::%{_lobby}%}
+
+    set {_chosen-gamemode} to "king-of-the-hill"
+    set {_highest} to getVotesGamemode("king-of-the-hill", {_lobby})
+
+    loop {gamemode-enum::*}:
+        set {_votes} to getVotesGamemode(loop-value, {_lobby})
+        if {_votes} > {_highest}:
+            set {_chosen-gamemode} to loop-value
+            set {_highest} to {_votes}
+
+    send "{@prefix} &fGamemode chosen was %{formatted-gamemode-msg::%{_chosen-gamemode}%}% &fwith &a%{_highest}% &fvotes!" to getPlayersInLobby({_lobby})
+    play sound "event.raid.horn" at volume 500 at pitch 1.2 to getPlayers({_lobby})
+    play sound "entity.player.levelup" at volume 10 at pitch 1.5 to getPlayers({_lobby})
+
+    loop getPlayers({_lobby}):
+        set {_display} to {-screen-display::%loop-player%::%{_chosen-gamemode}%-gamemode}
+        set {_text} to uncolored text of {_display}
+        set text of {_display} to "&e%{_text}%"
+        highlight({_display})
+
+    wait "%{@duration} - {@voting-time}% ticks" parsed as timespan
+
+    delete {-gamemode-votes::%{_lobby}%::*}
+    delete {-selecting-gamemode::%{_lobby}%}
+
+    wait 5 ticks
+
+    while {-showing-powers::%{_lobby}%} = true:
+        wait 1 tick
+
+    wait 2 ticks
+
+    if {_chosen-gamemode} = "king-of-the-hill":
+        #startKingOfTheHill((size of getPlayers({_lobby})) * 1000)
+        startKingOfTheHill({_lobby}, 20 * 60 * 5)
+    else if {_chosen-gamemode} = "free-for-all":
+        #startFreeForAll((size of getPlayers({_lobby})) * 100)
+        startFreeForAll({_lobby}, 20 * 60 * 5)
+    else if {_chosen-gamemode} = "team-deathmatch":
+        #startTeamDeathmatch((size of getPlayers({_lobby})) * 80)
+        startTeamDeathmatch({_lobby}, 20 * 60 * 5)
+
+
+function startMapSelection(lobby: text):
+
+    set {-selecting-map::%{_lobby}%} to true
+    set {-voting-map::%{_lobby}%} to true
+
+    loop getPlayers({_lobby}):
+        mapSelectionScreen(loop-player, {_lobby})
+
+    wait 1 tick
+
+    play sound "entity.player.levelup" at volume 10 at pitch 1.2 for getPlayers({_lobby})
+    play sound "block.barrel.open" at volume 10 at pitch 1.2 to getPlayers({_lobby})
+
+    loop {@voting-time} - 1 times:
+        if mod(-1 + loop-counter, 20) = 0:
+            play sound "block.note_block.hat" at volume 10 at pitch 1 to getPlayers({_lobby})
+        wait 1 tick
+
+    delete {-voting-map::%{_lobby}%}
+
+    set {_chosen-map} to "mushroom"
+    set {_highest} to getVotesMap("mushroom", {_lobby})
+
+    loop {map-enum::*}:
+        set {_votes} to getVotesMap(loop-value, {_lobby})
+        if {_votes} > {_highest}:
+            set {_chosen-map} to loop-value
+            set {_highest} to {_votes}
+
+    set {current-map::%{_lobby}%} to {_chosen-map}
+
+    send "{@prefix} &fMap chosen was %{formatted-map-msg::%{_chosen-map}%}% &fwith &a%{_highest}% &fvotes!" to getPlayersInLobby({_lobby})
+    play sound "event.raid.horn" at volume 500 at pitch 1.2 to getPlayers({_lobby})
+    play sound "entity.player.levelup" at volume 10 at pitch 1.5 to getPlayers({_lobby})
+
+    loop getPlayers({_lobby}):
+        set {_display} to {-screen-display::%loop-player%::%{_chosen-map}%-map}
+        set {_text} to uncolored text of {_display}
+        set text of {_display} to "&e%{_text}%"
+        highlight({_display})
+
+    wait "%{@duration} - {@voting-time}% ticks" parsed as timespan
+
+    delete {-map-votes::%{_lobby}%::*}
+    delete {-selecting-map::%{_lobby}%}
+
+function startPowersSelection(lobby: text):
+
+    set {-showing-powers::%{_lobby}%} to true
+
+    delete {-powers-this-round::%{_lobby}%::*}
+
+    set {_powers::uncommon::*} to getDistinctRandom(getPowerNamesOfRarity("uncommon"), 5)
+    set {_powers::rare::*} to getDistinctRandom(getPowerNamesOfRarity("rare"), 5)
+    set {_powers::epic::*} to getDistinctRandom(getPowerNamesOfRarity("epic"), 5)
+
+    loop indices of {_powers::*}:
+        loop {_powers::%loop-value%::*}:
+            set {-powers-this-round::%{_lobby}%::%loop-value-1%::%loop-value-2%} to 1
+
+    loop getPowerNamesOfRarity("legendary"):
+        set {-powers-this-round::%{_lobby}%::legendary::%loop-value%} to 1
+
+    loop getPlayers({_lobby}):
+        powersScreen(loop-player, {_lobby})
+
+    wait 1 tick
+
+    play sound "entity.player.levelup" at volume 10 at pitch 1.2 for getPlayers({_lobby})
+    play sound "block.barrel.open" at volume 10 at pitch 1.2 to getPlayers({_lobby})
+
+    wait {@power-screen-duration} ticks
+
+    delete {-showing-powers::%{_lobby}%}
+
+function startResultsScreen(lobby: text):
+
+    set {-showing-results::%{_lobby}%} to true
+
+    loop "points", "kills" and "deaths":
+
+        if size of getPlayersInLobby({_lobby}) = 0:
+            exit loop
+
+        startScreenTicks({_lobby}, {@results-screen-duration})
+        set {-results-stage::%{_lobby}%} to loop-value
+        loop getPlayers({_lobby}):
+            podiumScreen(loop-player, {-gamemode::%{_lobby}%}, loop-value-1, {_lobby})
+
+        play sound "entity.player.levelup" at volume 10 at pitch 1.2 for getPlayers({_lobby})
+        play sound "block.barrel.open" at volume 10 at pitch 1.2 to getPlayers({_lobby})
+
+        wait {@results-screen-duration} ticks
+
+        loop getPlayers({_lobby}):
+            clearScreenDisplay(loop-player)
+
+        wait 1 tick
+
+    startScreenTicks({_lobby}, {@results-screen-duration})
+
+    if size of getPlayersInLobby({_lobby}) > 0:
+        loop getPlayers({_lobby}):
+            leaderboardScreen(loop-player, {-gamemode::%{_lobby}%}, {_lobby})
+
+        play sound "entity.player.levelup" at volume 10 at pitch 1.2 for getPlayers({_lobby})
+        play sound "block.barrel.open" at volume 10 at pitch 1.2 to getPlayers({_lobby})
+
+        while {-screen-ticks::%{_lobby}%} > 0:
+            wait 1 tick
+
+    delete {-showing-results::%{_lobby}%}
+
+    loop getPlayersInLobby({_lobby}):
+        exitPseudoSpectatorMode(loop-value)
+
+    sidebar(getPlayers({_lobby}))
+
+function startLeaderboardScreen(lobby: text):
+
+    set {-showing-results::%{_lobby}%} to true
+
+    loop getPlayers({_lobby}):
+        leaderboardScreen(loop-player, {-gamemode::%{_lobby}%}, {_lobby})
+
+    play sound "entity.player.levelup" at volume 10 at pitch 1.2 for getPlayers({_lobby})
+    play sound "block.barrel.open" at volume 10 at pitch 1.2 to getPlayers({_lobby})
+
+    wait {@results-screen-duration} ticks
+
+    loop getPlayers({_lobby}):
+        clearScreenDisplay(loop-player)
+
+    delete {-showing-results::%{_lobby}%}
+
+function clearScreenDisplay(p: player):
+    loop indices of {-screen-display::%{_p}%::*}:
+        loop {-screen-display::%{_p}%::%loop-value%::*}:
+            kill loop-value-2
+    kill {-screen-display::%{_p}%::*}
+    delete {-screen-display::%{_p}%::*}
+
+function deleteScreenDisplay(p: player):
+    kill {-screen-display::%{_p}%::*}
+    delete {-screen-display::%{_p}%::*}
+
+    kill {-screen-overlay::%{_p}%::*}
+    delete {-screen-overlay::%{_p}%::*}
+
+    kill {-camera-stand::%{_p}%}
+    delete {-camera-stand::%{_p}%}
+    set camera of {_p} to entity with id (entity id of {_p})
+    
+function startSelection(lobby: text):
+
+    set {-selection-in-progress::%{_lobby}%} to true
+
+    loop getPlayers({_lobby}):
+        openSelectionScreen(loop-value, {_lobby})
+        applyInvis(loop-value)
+        set gamemode of loop-value to spectator
+
+    wait 1 tick
+
+    #while {-wait-on-selection::%{_lobby}%} = true:
+    #    wait 1 tick
+
+    startScreenTicks({_lobby}, {@duration})
+    startMapSelection({_lobby})
+    wait 1 tick
+
+    while {-selecting-map::%{_lobby}%} = true:
+        wait 1 tick
+
+    loop getPlayers({_lobby}):
+        deleteScreenDisplay(loop-player)
+
+    wait 1 tick
+
+    loop getPlayers({_lobby}):
+        if distance between loop-player and getCurrentMapCentre({_lobby}) > 512:
+            set {_wait} to true
+            exit loop
+
+    set {_centre} to getCurrentMapCentre({_lobby})
+
+    loop getPlayersInLobby({_lobby}):
+        teleport loop-value to {_centre}
+
+    if {_wait} = true:
+        wait 20 ticks
+
+    #while {-wait-on-selection::%{_lobby}%} = true:
+    #    wait 1 tick
+
+    loop getPlayers({_lobby}):
+        openSelectionScreen(loop-player, {_lobby})
+
+    wait 1 tick
+
+    startScreenTicks({_lobby}, {@duration})
+    startGamemodeSelection({_lobby})
+
+    loop getPlayersInLobby({_lobby}):
+        make {-game-ring-display::*} disappear for loop-value
+        make {-game-title-display::*} disappear for loop-value
+
+    wait 1 tick
+
+    while {-selecting-gamemode::%{_lobby}%} = true:
+        wait 1 tick
+
+    loop getPlayers({_lobby}):
+        clearScreenDisplay(loop-player)
+
+    wait 1 tick
+
+    startScreenTicks({_lobby}, {@power-screen-duration})
+    startPowersSelection({_lobby})
+
+    wait 1 tick
+    
+    while {-showing-powers::%{_lobby}%} is set:
+        wait 1 tick
+
+    loop getPlayers({_lobby}):
+        deleteScreenDisplay(loop-value)
+        removeInvis(loop-value)
+        set gamemode of loop-value to adventure
+    
+    delete {-selection-in-progress::%{_lobby}%}
+
+function startResults(lobby: text):
+
+    loop getPlayersInLobby({_lobby}) where [{-is-spectating::%input%} = true]:
+        exitPseudoSpectatorMode(loop-value)
+
+    loop getPlayers({_lobby}):
+        openSelectionScreen(loop-player, {_lobby})
+        applyInvis(loop-player)
+
+    startResultsScreen({_lobby})
+
+    wait 1 tick
+    
+    while {-showing-results::%{_lobby}%} is set:
+        wait 1 tick
+
+    loop getPlayers({_lobby}):
+        deleteScreenDisplay(loop-player)
+        removeInvis(loop-player)
+
+function openSelectionScreen(p: player, lobby: text):
+    set {_centre} to getCurrentMapCentre({_lobby})
+
+    #if distance between {_p} and {_centre} > 512:
+    #    set {-wait-on-selection::%{_lobby}%} to true
+
+    #teleport getPlayersInLobby({_lobby}) to {_centre}
+
+    spawn armor stand at {_centre}:
+        set {_stand} to event-entity
+        add nbt compound of "{Invisible:1b,NoGravity:1b}" to nbt compound of {_stand}
+
+    set {-camera-stand::%{_p}%} to {_stand}
+
+    #if {-wait-on-selection::%{_lobby}%} = true:
+    #    wait 20 ticks
+    #    delete {-wait-on-selection::%{_lobby}%}
+
+    set {-screen-overlay::%{_p}%::front} to spawnOverlayDisplay({_p}, {_centre})
+    set {-screen-overlay::%{_p}%::back} to spawnOverlayDisplay({_p}, {_centre})
+
+    wait 1 tick
+
+    set display translation of {-screen-overlay::%{_p}%::back} to vector(0, {@scale} * -0.125, 4)
+
+    set camera of {_p} to entity with id (entity id of {_stand})
+
+function gamemodeSelectionScreen(p: player, lobby: text):
+
+    set {_centre} to getCurrentMapCentre({_lobby})
+    set {_stand} to {-camera-stand::%{_p}%}
+
+    #set camera of {_p} to entity with id (entity id of {_p})
+    #teleport {_p} to {_centre}
+    #wait 1 tick
+
+    #teleport {_stand} to {_centre}
+    #wait 1 tick
+    #set camera of {_p} to entity with id (entity id of {_stand})
+
+    set {-screen-display::%{_p}%::title} to layerTextDisplay({_p}, {-screen-overlay::%{_p}%::front}, "&bCHOOSE GAMEMODE", 1.1, vector(0, 0, 0))
+    set {-screen-display::%{_p}%::left} to layerTextDisplay({_p}, {-screen-overlay::%{_p}%::front}, "&a🅰 &a&o- &a&oLeft", 0.6, vector(-0.5, -0.2, 0))
+    set {-screen-display::%{_p}%::right} to layerTextDisplay({_p}, {-screen-overlay::%{_p}%::front}, "&a🅳 &a&o- &a&oRight", 0.6, vector(0.5, -0.2, 0))
+    set {-screen-display::%{_p}%::king-of-the-hill-gamemode} to layerTextDisplay({_p}, {-screen-overlay::%{_p}%::front}, "&fKING OF THE HILL", 0.65, vector(-1.5, -0.5, 0))
+    set {-screen-display::%{_p}%::free-for-all-gamemode} to layerTextDisplay({_p}, {-screen-overlay::%{_p}%::front}, "&fFREE FOR ALL", 0.65, vector(0, -0.5, 0))
+    set {-screen-display::%{_p}%::team-deathmatch-gamemode} to layerTextDisplay({_p}, {-screen-overlay::%{_p}%::front}, "&fTEAM DEATHMATCH", 0.65, vector(1.5, -0.5, 0))
+
+    set {-screen-display::%{_p}%::king-of-the-hill-gamemode-votes} to layerTextDisplay({_p}, {-screen-overlay::%{_p}%::front}, "&f0 Votes", 0.45, vector(-1.5, -0.7, 0))
+    set {-screen-display::%{_p}%::free-for-all-gamemode-votes} to layerTextDisplay({_p}, {-screen-overlay::%{_p}%::front}, "&f0 Votes", 0.45, vector(0, -0.7, 0))
+    set {-screen-display::%{_p}%::team-deathmatch-gamemode-votes} to layerTextDisplay({_p}, {-screen-overlay::%{_p}%::front}, "&f0 Votes", 0.45, vector(1.5, -0.7, 0))
+
+    set {-screen-display::%{_p}%::king-of-the-hill-gamemode-heads} to layerTextDisplay({_p}, {-screen-overlay::%{_p}%::front}, "", 0.45, vector(-1.5, -0.9, 0))
+    set {-screen-display::%{_p}%::free-for-all-gamemode-heads} to layerTextDisplay({_p}, {-screen-overlay::%{_p}%::front}, "", 0.45, vector(0, -0.9, 0))
+    set {-screen-display::%{_p}%::team-deathmatch-gamemode-heads} to layerTextDisplay({_p}, {-screen-overlay::%{_p}%::front}, "", 0.45, vector(1.5, -0.9, 0))
+
+    set {-screen-display::%{_p}%::countdown} to layerTextDisplay({_p}, {-screen-overlay::%{_p}%::front}, "", 0.5, vector(0, -1.1, 0))
+    set {-screen-display::%{_p}%::select-powers} to layerTextDisplay({_p}, {-screen-overlay::%{_p}%::front}, "&e&o/select-powers, /switch-lobby", 0.5, vector(0, -1.35, 0))
+
+    set {_angle} to 1.5
+
+    if {-gamemode-num::%{_p}%} is not set:
+        set {-gamemode-num::%{_p}%} to 1
+
+    initVoteGamemode({_p}, {_lobby})
+    updateAllVotesGamemode({_lobby})
+
+    while {-screen-ticks::%{_lobby}%} > 0:
+
+        if getLobby({_p}) != {_lobby}:
+            exit loop
+
+        if {_p} is offline:
+            exit loop
+
+        add {_angle} to {-rotated-by::%{_stand}%}
+        set {_v} to spherical vector radius 32, yaw {-rotated-by::%{_stand}%}, pitch 0
+        set {_temp-l} to location 16 above {_centre} ~ {_v}
+        set yaw of {_temp-l} to {-rotated-by::%{_stand}%} + 180
+        teleport {_stand} to {_temp-l}
+        set yaw of {-screen-overlay::%{_p}%::front} to (yaw of {_temp-l})
+        set yaw of {-screen-overlay::%{_p}%::back} to (yaw of {_temp-l}) + 180
+
+        if {-screen-ticks::%{_lobby}%} >= {@duration} - {@voting-time}:
+            set {_time-left} to {-screen-ticks::%{_lobby}%} + {@voting-time} - {@duration}
+            if mod({_time-left}, 20) = 0:
+                set text of {-screen-display::%{_p}%::countdown} to "&f&o%{_time-left} / 20%.0 seconds left..."
+            else if mod({_time-left}, 2) = 0:
+                set text of {-screen-display::%{_p}%::countdown} to "&f&o%{_time-left} / 20% seconds left..."
+
+        if {-screen-ticks::%{_lobby}%} = {@duration} - {@voting-time} - 1:
+            set text of {-screen-display::%{_p}%::countdown} to ""
+
+        if {-screen-ticks::%{_lobby}%} = 20:
+            loop {-screen-display::%{_p}%::*} and {-screen-overlay::%{_p}%::*}:
+                shrinkOut(loop-value)
+            play sound "entity.warden.sonic_charge" at volume 10 at pitch 1.2 to getPlayers({_lobby})
+
+        wait 1 tick
+
+    #set gamemode of {_p} to adventure
+
+function mapSelectionScreen(p: player, lobby: text):
+
+    set {_centre} to getCurrentMapCentre({_lobby})
+    set {_stand} to {-camera-stand::%{_p}%}
+
+    wait 1 tick
+
+    set {-screen-display::%{_p}%::title} to layerTextDisplay({_p}, {-screen-overlay::%{_p}%::front}, "&bCHOOSE MAP", 1.1, vector(0, 0, 0))
+    set {-screen-display::%{_p}%::left} to layerTextDisplay({_p}, {-screen-overlay::%{_p}%::front}, "&a🅰 &a&o- &a&oLeft", 0.6, vector(-0.5, -0.2, 0))
+    set {-screen-display::%{_p}%::right} to layerTextDisplay({_p}, {-screen-overlay::%{_p}%::front}, "&a🅳 &a&o- &a&oRight", 0.6, vector(0.5, -0.2, 0))
+    set {-screen-display::%{_p}%::mushroom-map} to layerTextDisplay({_p}, {-screen-overlay::%{_p}%::front}, "&fMUSHROOM", 0.65, vector(-1, -0.5, 0))
+    set {-screen-display::%{_p}%::desert-map} to layerTextDisplay({_p}, {-screen-overlay::%{_p}%::front}, "&fDESERT", 0.65, vector(0, -0.5, 0))
+    set {-screen-display::%{_p}%::ice-map} to layerTextDisplay({_p}, {-screen-overlay::%{_p}%::front}, "&fICE", 0.65, vector(1, -0.5, 0))
+    #set {-screen-display::%{_p}%::team-deathmatch-gamemode} to layerTextDisplay({_p}, {-screen-overlay::%{_p}%::front}, "&fTEAM DEATHMATCH", 0.65, vector(1.5, -0.5, 0))
+
+    set {-screen-display::%{_p}%::mushroom-map-votes} to layerTextDisplay({_p}, {-screen-overlay::%{_p}%::front}, "&f0 Votes", 0.45, vector(-1, -0.7, 0))
+    set {-screen-display::%{_p}%::desert-map-votes} to layerTextDisplay({_p}, {-screen-overlay::%{_p}%::front}, "&f0 Votes", 0.45, vector(0, -0.7, 0))
+    set {-screen-display::%{_p}%::ice-map-votes} to layerTextDisplay({_p}, {-screen-overlay::%{_p}%::front}, "&f0 Votes", 0.45, vector(1, -0.7, 0))
+
+    set {-screen-display::%{_p}%::mushroom-map-heads} to layerTextDisplay({_p}, {-screen-overlay::%{_p}%::front}, "", 0.45, vector(-1, -0.9, 0))
+    set {-screen-display::%{_p}%::desert-map-heads} to layerTextDisplay({_p}, {-screen-overlay::%{_p}%::front}, "", 0.45, vector(0, -0.9, 0))
+    set {-screen-display::%{_p}%::ice-map-heads} to layerTextDisplay({_p}, {-screen-overlay::%{_p}%::front}, "", 0.45, vector(1, -0.9, 0))
+
+    set {-screen-display::%{_p}%::countdown} to layerTextDisplay({_p}, {-screen-overlay::%{_p}%::front}, "", 0.5, vector(0, -1.1, 0))
+    set {-screen-display::%{_p}%::select-powers} to layerTextDisplay({_p}, {-screen-overlay::%{_p}%::front}, "&e&o/select-powers, /switch-lobby", 0.5, vector(0, -1.35, 0))
+
+    set {_angle} to 1.5
+
+    if {-map-num::%{_p}%} is not set:
+        set {-map-num::%{_p}%} to 1
+
+    initVoteMap({_p}, {_lobby})
+    updateAllVotesMap({_lobby})
+
+    while {-screen-ticks::%{_lobby}%} > 0:
+
+        if getLobby({_p}) != {_lobby}:
+            exit loop
+
+        if {_p} is offline:
+            exit loop
+
+        add {_angle} to {-rotated-by::%{_stand}%}
+        set {_v} to spherical vector radius 32, yaw {-rotated-by::%{_stand}%}, pitch 0
+        set {_temp-l} to location 16 above {_centre} ~ {_v}
+        set yaw of {_temp-l} to {-rotated-by::%{_stand}%} + 180
+        teleport {_stand} to {_temp-l}
+        set yaw of {-screen-overlay::%{_p}%::front} to (yaw of {_temp-l})
+        set yaw of {-screen-overlay::%{_p}%::back} to (yaw of {_temp-l}) + 180
+
+        if {-screen-ticks::%{_lobby}%} >= {@duration} - {@voting-time}:
+            set {_time-left} to {-screen-ticks::%{_lobby}%} + {@voting-time} - {@duration}
+            if mod({_time-left}, 20) = 0:
+                set text of {-screen-display::%{_p}%::countdown} to "&f&o%{_time-left} / 20%.0 seconds left..."
+            else if mod({_time-left}, 2) = 0:
+                set text of {-screen-display::%{_p}%::countdown} to "&f&o%{_time-left} / 20% seconds left..."
+
+        if {-screen-ticks::%{_lobby}%} = {@duration} - {@voting-time} - 1:
+            set text of {-screen-display::%{_p}%::countdown} to ""
+
+        if {-screen-ticks::%{_lobby}%} = 20:
+            loop {-screen-display::%{_p}%::*} and {-screen-overlay::%{_p}%::*}:
+                shrinkOut(loop-value)
+            play sound "entity.warden.sonic_charge" at volume 10 at pitch 1.2 to {_p}
+
+        wait 1 tick
+
+    #set gamemode of {_p} to adventure
+
+function powersScreen(p: player, lobby: text):
+
+    set {_centre} to getCurrentMapCentre({_lobby})
+
+    set {_stand} to {-camera-stand::%{_p}%}
+
+    wait 1 tick
+
+    set {-screen-display::%{_p}%::title} to layerTextDisplay({_p}, {-screen-overlay::%{_p}%::front}, "&ePOWERS THIS ROUND", 1.1, vector(0, 0.625, 0))
+    set {-screen-display::%{_p}%::select-powers} to layerTextDisplay({_p}, {-screen-overlay::%{_p}%::front}, "&f&oYour selected powers are more likely to be dropped.", 0.5, vector(0, -1.5, 0))
+
+    #loop {_powers::*}:
+    #    set {_name} to loop-value in kebab case
+    #    set {_vert-offset} to 0.75 * ceil(2 * loop-counter / (size of {_powers::*}))
+    #    set {_hori-offset} to 1.25 * mod(loop-counter, (size of {_powers::*}) / 2)
+    #    set {-screen-display::%{_p}%::power::%loop-counter%} to layerItemDisplay({_p}, {-screen-overlay::%{_p}%::front}, {powers::%{_name}%}, 0.4, vector(-2.5 + {_hori-offset}, -2 + {_vert-offset}, 0))
+    #    set {-screen-display::%{_p}%::power-text::%loop-counter%} to layerTextDisplay({_p}, {-screen-overlay::%{_p}%::front}, name of {powers::%{_name}%}, 0.45, vector(-2.5 + {_hori-offset}, -1.75 + {_vert-offset}, 0))
+
+    set {_angle} to 1.5
+
+    while {-screen-ticks::%{_lobby}%} > 0:
+
+        if getLobby({_p}) != {_lobby}:
+            exit loop
+
+        if {_p} is offline:
+            exit loop
+
+        if all:
+            loop-counter <= 15 * 5
+            mod(loop-counter, 5) = 0
+        then:
+            set {_n} to loop-counter / 5
+            if {_n} <= 5:
+                set {_power-name} to {_n}th element of indices of {-powers-this-round::%{_lobby}%::uncommon::*}
+            else if {_n} <= 10:
+                set {_power-name} to ({_n} - 5)th element of indices of {-powers-this-round::%{_lobby}%::rare::*}
+            else:
+                set {_power-name} to ({_n} - 10)th element of indices of {-powers-this-round::%{_lobby}%::epic::*}
+
+            set {_power} to {powers::%{_power-name}%}
+            set {_vert-offset} to -0.65 * ceil({_n} / 5)
+            set {_hori-offset} to 0.75 * mod({_n} - 1, 5)
+
+            set {-screen-display::%{_p}%::power::%{_n}%} to layerItemDisplay({_p}, {-screen-overlay::%{_p}%::front}, {_power}, 0.25, vector(-1.5 + {_hori-offset}, 0.875 + {_vert-offset}, 0))
+            set {-screen-display::%{_p}%::power-text::%{_n}%} to layerTextDisplay({_p}, {-screen-overlay::%{_p}%::front}, name of {_power}, 0.25, vector(-1.5 + {_hori-offset}, 1.125 + {_vert-offset}, 0.1))
+
+            play sound "ui.loom.select_pattern" at volume 3 at pitch 2 to {_p}
+            play sound "block.note_block.didgeridoo" at volume 3 at pitch 1 + {_n} / 15 to {_p}
+
+        if loop-counter = 5 * 16:
+            play sound "item.totem.use" at volume 3 at pitch 1.5 to {_p}
+            play sound "entity.player.levelup" at volume 3 at pitch 0.75 to {_p}
+            loop {-screen-display::%{_p}%::power::*}:
+                highlight(loop-value)
+
+        if loop-counter = 5 * 16 + 31:
+            loop {-screen-display::%{_p}%::power::*}:
+                set interpolation duration of loop-value to 1 ticks
+            
+        add {_angle} to {-rotated-by::%{_stand}%}
+        set {_v} to spherical vector radius 32, yaw {-rotated-by::%{_stand}%}, pitch 0
+        set {_temp-l} to location 16 above {_centre} ~ {_v}
+        set yaw of {_temp-l} to {-rotated-by::%{_stand}%} + 180
+        teleport {_stand} to {_temp-l}
+        set yaw of {-screen-overlay::%{_p}%::front} to (yaw of {_temp-l}) + 180
+        set yaw of {-screen-overlay::%{_p}%::back} to (yaw of {_temp-l})
+
+        loop {-screen-display::%{_p}%::power::*}:
+            set interpolation delay of loop-value to 0 ticks
+            rotate loop-value around y-axis by 15
+            rotate loop-value around x-axis by 3
+
+        if {-screen-ticks::%{_lobby}%} = 20:
+            loop {-screen-display::%{_p}%::*}, {-screen-display::%{_p}%::power::*}, {-screen-display::%{_p}%::power-text::*} and {-screen-overlay::%{_p}%::*}:
+                shrinkOut(loop-value)
+            play sound "entity.warden.sonic_charge" at volume 10 at pitch 1.2 to {_p}
+
+        wait 1 tick
+
+function podiumScreen(p: player, gamemode: text, stat: text = "kills", lobby: text):
+
+    set {_gamemode} to {-gamemode::%{_lobby}%}
+
+    set {_centre} to getCurrentMapCentre({_lobby})
+
+    set {_stand} to {-camera-stand::%{_p}%}
+
+    set {-screen-display::%{_p}%::title} to layerTextDisplay({_p}, {-screen-overlay::%{_p}%::front}, "&a%{_stat} in uppercase%", 1.1, vector(0, 0.7, 0))
+
+    if {-gamemode::%{_lobby}%} = "team-deathmatch" or "king-of-the-hill":
+        loop getPlayersOnTeam({_lobby}, "blue") and getPlayersOnTeam({_lobby}, "red"):
+            set {_%{_stat}%::%loop-value%} to {-%{_stat}%::%{_lobby}%::%{-gamemode::%{_lobby}%}%::%loop-value%}
+
+        set {_sorted-players::*} to sortArrayCompareDescending(indices of {_%{_stat}%::*}, {_%{_stat}%::*})
+
+    else:
+        set {_sorted-players::*} to sortArrayCompareDescending(indices of {-%{_stat}%::%{_lobby}%::%{-gamemode::%{_lobby}%}%::*}, {-%{_stat}%::%{_lobby}%::%{-gamemode::%{_lobby}%}%::*})
+
+    loop {_sorted-players::*}:
+        set {_players::%loop-counter%} to (loop-value parsed as player) ? (loop-value parsed as offlineplayer)
+        set {_%{_stat}%::%loop-counter%} to {-%{_stat}%::%{_lobby}%::%{_gamemode}%::%{_players::%loop-counter%}%}
+        if loop-counter = 3:
+            exit loop
+
+    set {_height::1} to 4
+    set {_height::2} to {_height::1} * {_%{_stat}%::2} / {_%{_stat}%::1}
+    set {_height::3} to {_height::1} * {_%{_stat}%::3} / {_%{_stat}%::1}
+
+    set {_heads::1} to object text component with player head from {_players::1}
+    set {_heads::2} to object text component with player head from {_players::2}
+    set {_heads::3} to object text component with player head from {_players::3}
+
+    # FIRST PLACE
+
+    if {_players::1} is set:
+        set {-screen-display::%{_p}%::bar-shadow::1} to layerTextDisplay({_p}, {-screen-overlay::%{_p}%::front}, "    ", 1.2, vector(0, -1 * (1 + {@shadow-width} / 8), 0), false)
+        set color of {-screen-display::%{_p}%::bar-shadow::1} to rgb(181, 148, 16)
+
+        set {-screen-display::%{_p}%::bars::1} to layerTextDisplay({_p}, {-screen-overlay::%{_p}%::front}, "    ", 1, vector(0, -1, 0.05), false)
+        set display scale of {-screen-display::%{_p}%::bars::1} to vector(1, {_height::1}, 1)
+        set color of {-screen-display::%{_p}%::bars::1} to rgb(255, 215, 0)
+
+        set {-screen-display::%{_p}%::heads::1} to layerTextDisplay({_p}, {-screen-overlay::%{_p}%::front}, "", 1.1, vector(0, 0, 0), false)
+        set display text component of {-screen-display::%{_p}%::heads::1} to {_heads::1}
+
+        set {-screen-display::%{_p}%::name-text::1} to layerTextDisplay({_p}, {-screen-overlay::%{_p}%::front}, "", 0.35, vector(0, -0.25, 0.05), false)
+
+        set {-screen-display::%{_p}%::place-text::1} to layerTextDisplay({_p}, {-screen-overlay::%{_p}%::front}, "&0&l1", 1.1, vector(0, -0.25, 0.05), false)
+
+    # SECOND PLACE
+
+    if {_players::2} is set:
+        set {-screen-display::%{_p}%::bar-shadow::2} to layerTextDisplay({_p}, {-screen-overlay::%{_p}%::front}, "    ", 1.2, vector(2 * {@bar-separation} * -0.05 * (10 + {@shadow-width}), -1 * (1 + {@shadow-width} / 8), 0), false)
+        set color of {-screen-display::%{_p}%::bar-shadow::2} to rgb(113, 112, 110)
+
+        set {-screen-display::%{_p}%::bars::2} to layerTextDisplay({_p}, {-screen-overlay::%{_p}%::front}, "    ", 1, vector(-1 * {@bar-separation}, -1, 0.05), false)
+        set display scale of {-screen-display::%{_p}%::bars::2} to vector(1, {_height::2}, 1)
+        set color of {-screen-display::%{_p}%::bars::2} to rgb(192, 192, 192)
+
+        set {-screen-display::%{_p}%::heads::2} to layerTextDisplay({_p}, {-screen-overlay::%{_p}%::front}, "", 1.1, vector(-1 * {@bar-separation}, 0, 0), false)
+        set display text component of {-screen-display::%{_p}%::heads::2} to {_heads::2}
+
+        set {-screen-display::%{_p}%::name-text::2} to layerTextDisplay({_p}, {-screen-overlay::%{_p}%::front}, "", 0.35, vector(-1 * {@bar-separation}, -0.25, 0.05), false)
+
+        set {-screen-display::%{_p}%::place-text::2} to layerTextDisplay({_p}, {-screen-overlay::%{_p}%::front}, "&0&l2", 1.1, vector(-1 * {@bar-separation}, -0.25, 0.05), false)
+
+    # THIRD PLACE
+
+    if {_players::3} is set:
+        set {-screen-display::%{_p}%::bar-shadow::3} to layerTextDisplay({_p}, {-screen-overlay::%{_p}%::front}, "    ", 1.2, vector(2 * {@bar-separation} * 0.05 * (10 + {@shadow-width}), -1 * (1 + {@shadow-width} / 8), 0), false)
+        set color of {-screen-display::%{_p}%::bar-shadow::3} to rgb(156, 88, 20)
+
+        set {-screen-display::%{_p}%::bars::3} to layerTextDisplay({_p}, {-screen-overlay::%{_p}%::front}, "    ", 1, vector({@bar-separation}, -1, 0.05), false)
+        set display scale of {-screen-display::%{_p}%::bars::3} to vector(1, {_height::3}, 1)
+        set color of {-screen-display::%{_p}%::bars::3} to rgb(205, 127, 50)
+
+        set {-screen-display::%{_p}%::heads::3} to layerTextDisplay({_p}, {-screen-overlay::%{_p}%::front}, "", 1.1, vector({@bar-separation}, 0, 0), false)
+        set display text component of {-screen-display::%{_p}%::heads::3} to {_heads::3}
+
+        set {-screen-display::%{_p}%::name-text::3} to layerTextDisplay({_p}, {-screen-overlay::%{_p}%::front}, "", 0.35, vector({@bar-separation}, -0.25, 0.05), false)
+
+        set {-screen-display::%{_p}%::place-text::3} to layerTextDisplay({_p}, {-screen-overlay::%{_p}%::front}, "&0&l3", 1.1, vector({@bar-separation}, -0.25, 0.05), false)
+
+    # SET NAME TEXT
+
+    loop indices of {_players::*}:
+        set {_side} to getPlayerSide({_players::%loop-value%})
+        if {_side} is not set:
+            set {_name} to "&a%{_players::%loop-value%}%"
+        else if {_side} = "blue":
+            set {_name} to "&9%{_players::%loop-value%}%"
+        else if {_side} = "red":
+            set {_name} to "&c%{_players::%loop-value%}%"
+        set text of {-screen-display::%{_p}%::name-text::%loop-value%} to join {_name} and "&f%{_%{_stat}%::%loop-value%}% %{_stat} in proper case%" with nl
+
+    # PODIUM
+
+    set {-screen-display::%{_p}%::podium} to layerTextDisplay({_p}, {-screen-overlay::%{_p}%::front}, "", 1, vector(-0.275, -1.35, 0.1), false)
+    set {_podium-text} to object text component with sprite "block/iron_block"
+    set display text component of {-screen-display::%{_p}%::podium} to {_podium-text}
+    set display scale of {-screen-display::%{_p}%::podium} to vector(10, 2, 1)
+
+    set {_angle} to 1.5
+
+    loop {-screen-display::%{_p}%::bars::*}:
+        set interpolation duration of loop-value to 1 tick
+        set {-orig-height::%loop-value%} to y component of display scale of loop-value
+
+    loop {-screen-display::%{_p}%::heads::*}:
+        set interpolation duration of loop-value to 1 tick
+
+    while {-screen-ticks::%{_lobby}%} > 0:
+
+        if getLobby({_p}) != {_lobby}:
+            exit loop
+
+        if {_p} is offline:
+            exit loop
+
+        if {-screen-ticks::%{_lobby}%} >= {@results-screen-duration} - 40:
+            set {_scale-factor} to easeOutBounce(loop-counter / 40)
+            loop {-screen-display::%{_p}%::bars::*}:
+
+                set {_bar} to {-screen-display::%{_p}%::bars::%loop-counter-2%}
+                set {_bar-shadow} to {-screen-display::%{_p}%::bar-shadow::%loop-counter-2%}
+                set {_head} to {-screen-display::%{_p}%::heads::%loop-counter-2%}
+                set {_place-text} to {-screen-display::%{_p}%::place-text::%loop-counter-2%}
+                set {_name-text} to {-screen-display::%{_p}%::name-text::%loop-counter-2%}
+
+                set {_orig-height} to {-orig-height::%{_bar}%}
+
+                set interpolation delay of {_bar} to 0 ticks
+                set interpolation delay of {_bar-shadow} to 0 ticks
+                set interpolation delay of {_head} to 0 ticks
+                set interpolation delay of {_place-text} to 0 ticks
+
+                set y component of display scale of {_bar} to {_scale-factor} * {_orig-height}
+                set y component of display scale of {_bar-shadow} to {_scale-factor} * ({_orig-height} + {@shadow-width})
+                set y component of display translation of {_head} to -0.5 + {_scale-factor} * {_orig-height} * 0.2
+                set y component of display translation of {_place-text} to -1.2 + {_scale-factor} * {_orig-height} * 0.2
+                set y component of display translation of {_name-text} to -0.7 + {_scale-factor} * {_orig-height} * 0.2
+
+        else if {-screen-ticks::%{_lobby}%} = {@results-screen-duration} - 41:
+            loop indices of {-screen-display::%{_p}%::*}:
+                loop {-screen-display::%{_p}%::%loop-value%::*}:
+                    set interpolation duration of loop-value-2 to 0 ticks
+            loop {-screen-display::%{_p}%::heads::*}:
+                highlight(loop-value)
+
+        add {_angle} to {-rotated-by::%{_stand}%}
+        set {_v} to spherical vector radius 32, yaw {-rotated-by::%{_stand}%}, pitch 0
+        set {_temp-l} to location 16 above {_centre} ~ {_v}
+        set yaw of {_temp-l} to {-rotated-by::%{_stand}%} + 180
+        teleport {_stand} to {_temp-l}
+        set yaw of {-screen-overlay::%{_p}%::front} to (yaw of {_temp-l})
+        set yaw of {-screen-overlay::%{_p}%::back} to (yaw of {_temp-l}) + 180
+
+        wait 1 tick
+
+function leaderboardScreen(p: player, gamemode: text, lobby: text):
+    
+    set {_centre} to getCurrentMapCentre({_lobby})
+    set {_stand} to {-camera-stand::%{_p}%}
+
+    if {-gamemode::%{_lobby}%} = "team-deathmatch" or "king-of-the-hill":
+        loop getPlayersOnTeam({_lobby}, "blue"):
+            set {_points::blue::%loop-value%} to {-points::%{_lobby}%::%{-gamemode::%{_lobby}%}%::%loop-value%}
+        loop getPlayersOnTeam({_lobby}, "red"):
+            set {_points::red::%loop-value%} to {-points::%{_lobby}%::%{-gamemode::%{_lobby}%}%::%loop-value%}
+        set {_blue-players::*} to sortArrayCompareDescending(indices of {_points::blue::*}, {_points::blue::*})
+        set {_red-players::*} to sortArrayCompareDescending(indices of {_points::red::*}, {_points::red::*})
+        set {_players::*} to {_blue-players::*} and {_red-players::*}
+
+    else:
+        set {_players::*} to sortArrayCompareDescending(indices of {-points::%{_lobby}%::%{-gamemode::%{_lobby}%}%::*}, {-points::%{_lobby}%::%{-gamemode::%{_lobby}%}%::*})
+
+    set {-screen-display::%{_p}%::title} to layerTextDisplay({_p}, {-screen-overlay::%{_p}%::front}, "&aLEADERBOARD", 1.1, vector(0, 0.65, 0))
+
+    set {_board-sprite} to object text component with atlas "gui" with sprite "gamemode_switcher/slot"
+    set {-screen-display::%{_p}%::board} to layerTextDisplay({_p}, {-screen-overlay::%{_p}%::front}, "", 4, vector(-0.5, -0.2 - 0.12 * (size of {_players::*}), -0.05))
+    set display text component of {-screen-display::%{_p}%::board} to {_board-sprite}
+    set display scale of {-screen-display::%{_p}%::board} to vector(20, 3 + 0.5 * (size of {_players::*}), 20)
+
+    set {_text::1} to object text component with sprite "block/emerald_block"
+    set {_text::2} to formatted " <gradient:#49e817:#ccf9be>POINTS"
+    set {-screen-display::%{_p}%::points} to layerTextDisplay({_p}, {-screen-overlay::%{_p}%::front}, "", 0.35, vector(0.05, 0.3, 0))
+    set display text component of {-screen-display::%{_p}%::points} to merge components {_text::*} joined with ""
+
+    set {_text::1} to object text component with atlas "items" with sprite "item/spectral_arrow"
+    set {_text::2} to formatted " <gradient:#e5ff00:#b2c600>KILLS"
+    set {-screen-display::%{_p}%::kills} to layerTextDisplay({_p}, {-screen-overlay::%{_p}%::front}, "", 0.35, vector(0.55, 0.3, 0))
+    set display text component of {-screen-display::%{_p}%::kills} to merge components {_text::*} joined with ""
+
+    set {_text::1} to object text component with atlas "map_decorations" with sprite "red_x"
+    set {_text::2} to formatted " <gradient:#ff7000:#ff9b6a>DEATHS"
+    set {-screen-display::%{_p}%::deaths} to layerTextDisplay({_p}, {-screen-overlay::%{_p}%::front}, "", 0.35, vector(1.05, 0.3, 0))
+    set display text component of {-screen-display::%{_p}%::deaths} to merge components {_text::*} joined with ""
+
+    #loop {_players::*}:
+    #    set {_player} to (loop-value parsed as player) ? (loop-value parsed as offlineplayer)
+    #    set {_points} to {-points::%{_lobby}%::%{-gamemode::%{_lobby}%}%::%{_player}%} ? 0
+    #    set {_kills} to {-kills::%{-gamemode::%{_lobby}%}%::%{_player}%} ? 0
+    #    set {_deaths} to {-deaths::%{-gamemode::%{_lobby}%}%::%{_player}%} ? 0
+
+    #    set {_head} to object text component with player head from {_player}
+    #    set {-screen-display::%{_p}%::head::%loop-counter%} to layerTextDisplay({_p}, {-screen-overlay::%{_p}%::front}, "", 0.35, vector(-1.1, 0.3 - loop-counter * 0.1, 0))
+    #    set display text component of {-screen-display::%{_p}%::head::%loop-counter%} to {_head}
+
+    #    if {-gamemode::%{_lobby}%} = "king-of-the-hill" or "team-deathmatch":
+    #        set {_side} to getPlayerSide({_player})
+    #        if {_side} = "blue":
+    #            set {_name-text} to "&9%{_player}%"
+    #        if {_side} = "red":
+    #            set {_name-text} to "&c%{_player}%"
+    #    else:
+    #        set {_name-text} to "&e%{_player}%"
+
+    #    set {-screen-display::%{_p}%::name::%loop-counter%} to layerTextDisplay({_p}, {-screen-overlay::%{_p}%::front}, {_name-text}, 0.35, vector(-0.7, 0.3 - loop-counter * 0.1, 0))
+
+    #    set {-screen-display::%{_p}%::points::%loop-counter%} to layerTextDisplay({_p}, {-screen-overlay::%{_p}%::front}, "&f%{_points}%", 0.35, vector(0.05, 0.3 - loop-counter * 0.1, 0))
+
+    #    set {-screen-display::%{_p}%::kills::%loop-counter%} to layerTextDisplay({_p}, {-screen-overlay::%{_p}%::front}, "&f%{_kills}%", 0.35, vector(0.55, 0.3 - loop-counter * 0.1, 0))
+
+    #    set {-screen-display::%{_p}%::deaths::%loop-counter%} to layerTextDisplay({_p}, {-screen-overlay::%{_p}%::front}, "&f%{_deaths}%", 0.35, vector(1.05, 0.3 - loop-counter * 0.1, 0))
+
+    set {_angle} to 1.5
+    set {_n} to 0
+
+    while {-screen-ticks::%{_lobby}%} > 0:
+
+        if getLobby({_p}) != {_lobby}:
+            exit loop
+
+        if {_p} is offline:
+            exit loop
+
+        add {_angle} to {-rotated-by::%{_stand}%}
+        set {_v} to spherical vector radius 32, yaw {-rotated-by::%{_stand}%}, pitch 0
+        set {_temp-l} to location 16 above {_centre} ~ {_v}
+        set yaw of {_temp-l} to {-rotated-by::%{_stand}%} + 180
+        teleport {_stand} to {_temp-l}
+        set yaw of {-screen-overlay::%{_p}%::front} to (yaw of {_temp-l})
+        set yaw of {-screen-overlay::%{_p}%::back} to (yaw of {_temp-l}) + 180
+
+        if mod(loop-counter, 7) = 0:
+            {_n} < size of {_players::*}
+            add 1 to {_n}
+            set {_player} to ({_players::%{_n}%} parsed as player) ? ({_players::%{_n}%} parsed as offlineplayer)
+            set {_points} to {-points::%{_lobby}%::%{-gamemode::%{_lobby}%}%::%{_player}%} ? 0
+            set {_kills} to {-kills::%{_lobby}%::%{-gamemode::%{_lobby}%}%::%{_player}%} ? 0
+            set {_deaths} to {-deaths::%{_lobby}%::%{-gamemode::%{_lobby}%}%::%{_player}%} ? 0
+
+            set {_head} to object text component with player head from {_player}
+            set {-screen-display::%{_p}%::head::%{_n}%} to layerTextDisplay({_p}, {-screen-overlay::%{_p}%::front}, "", 0.35, vector(-1.1, 0.3 - {_n} * 0.1, 0))
+            set display text component of {-screen-display::%{_p}%::head::%{_n}%} to {_head}
+
+            if {-gamemode::%{_lobby}%} = "king-of-the-hill" or "team-deathmatch":
+                set {_side} to getPlayerSide({_player})
+                if {_side} = "blue":
+                    set {_name-text} to "&9%{_player}%"
+                if {_side} = "red":
+                    set {_name-text} to "&c%{_player}%"
+            else:
+                set {_name-text} to "&e%{_player}%"
+
+            set {-screen-display::%{_p}%::name::%{_n}%} to layerTextDisplay({_p}, {-screen-overlay::%{_p}%::front}, {_name-text}, 0.35, vector(-0.7, 0.3 - {_n} * 0.1, 0))
+
+            set {-screen-display::%{_p}%::points::%{_n}%} to layerTextDisplay({_p}, {-screen-overlay::%{_p}%::front}, "&f%{_points}%", 0.35, vector(0.05, 0.3 - {_n} * 0.1, 0))
+
+            set {-screen-display::%{_p}%::kills::%{_n}%} to layerTextDisplay({_p}, {-screen-overlay::%{_p}%::front}, "&f%{_kills}%", 0.35, vector(0.55, 0.3 - {_n} * 0.1, 0))
+
+            set {-screen-display::%{_p}%::deaths::%{_n}%} to layerTextDisplay({_p}, {-screen-overlay::%{_p}%::front}, "&f%{_deaths}%", 0.35, vector(1.05, 0.3 - {_n} * 0.1, 0))
+
+            play sound "ui.loom.select_pattern" at volume 3 at pitch 2 to {_p}
+
+        if {-screen-ticks::%{_lobby}%} = 20:
+            kill {-screen-display::%{_p}%::board}
+            delete {-screen-display::%{_p}%::board}
+            loop indices of {-screen-display::%{_p}%::*}:
+                loop {-screen-display::%{_p}%::%loop-value%::*}:
+                    shrinkOut(loop-value-2)
+            loop {-screen-display::%{_p}%::*}:
+                shrinkOut(loop-value)
+            play sound "entity.warden.sonic_charge" at volume 10 at pitch 1.2 to {_p}
+
+        wait 1 tick
+
+function waitingScreen(p: player, lobby: text):
+
+    {-camera-stand::%{_p}%} is not set
+
+    openSelectionScreen({_p}, {_lobby})
+    applyInvis({_p})
+
+    set {_centre} to getCurrentMapCentre({_lobby})
+    set {_stand} to {-camera-stand::%{_p}%}
+
+    set {_angle} to 1.5
+
+    set {-screen-display::%{_p}%::waiting} to layerTextDisplay({_p}, {-screen-overlay::%{_p}%::front}, "&fLOADING...", 2, vector(0, 0, 0))
+    set {-screen-display::%{_p}%::progress-bar} to layerTextDisplay({_p}, {-screen-overlay::%{_p}%::front}, "", 0.5, vector(0, -0.25, 0))
+
+    set {-in-waiting-screen::%{_p}%} to true
+
+    while {-screen-display::%{_p}%::waiting} is alive:
+
+        if getLobby({_p}) != {_lobby}:
+            exit loop
+
+        if {_p} is offline:
+            exit loop
+
+        if mod(loop-counter, 10) = 0:
+            set {_n} to mod(loop-counter, 3) + 1
+            set {_text} to "&fLOADING"
+            loop {_n} times:
+                set {_text} to "%{_text}%&f."
+            set text of {-screen-display::%{_p}%::waiting} to {_text}
+
+        set {_text} to ""
+        set {_max-ticks} to {-max-screen-ticks::%{_lobby}%} ? 1
+        set {_ticks-left} to {-screen-ticks::%{_lobby}%} ? 1
+
+        set {_progress} to ceil(10 * (1 - {_ticks-left} / {_max-ticks}))
+
+        loop {_progress} times:
+            set {_text} to "%{_text}%&a&l▌"
+        loop 10 - {_progress} times:
+            set {_text} to "%{_text}%&8&l▌"
+        set text of {-screen-display::%{_p}%::progress-bar} to {_text}
+
+        add {_angle} to {-rotated-by::%{_stand}%}
+        set {_v} to spherical vector radius 32, yaw {-rotated-by::%{_stand}%}, pitch 0
+        set {_temp-l} to location 16 above {_centre} ~ {_v}
+        set yaw of {_temp-l} to {-rotated-by::%{_stand}%} + 180
+        teleport {_stand} to {_temp-l}
+        set yaw of {-screen-overlay::%{_p}%::front} to (yaw of {_temp-l})
+        set yaw of {-screen-overlay::%{_p}%::back} to (yaw of {_temp-l}) + 180
+
+        wait 1 tick
+
+    {-selection-in-progress::%{_lobby}%} is not set
+
+    deleteScreenDisplay({_p})
+    removeInvis({_p})
+
+    delete {-in-waiting-screen::%{_p}%}
+
+on player input:
+    {-camera-stand::%player%} is set
+    set {_lobby} to getLobby(player)
+    {-in-waiting-screen::%player%} != true
+    {-is-spectating::%player%} != true
+    if {-voting-gamemode::%{_lobby}%} = true:
+        if player is pressing right key:
+            changeGamemode(player, 1, {_lobby})
+        else if player is pressing left key:
+            changeGamemode(player, -1, {_lobby})
+    else if {-voting-map::%{_lobby}%} = true:
+        if player is pressing right key:
+            changeMap(player, 1, {_lobby})
+        else if player is pressing left key:
+            changeMap(player, -1, {_lobby})
+
+command /start-map-selection:
+    permission: op
+    trigger:
+        set {_lobby} to getLobby(player)
+        if any:
+            {-gamemode::%{_lobby}%} is set
+            {-selection-in-progress::%{_lobby}%} = true
+        then:
+            error(player, "&cA match is already ongoing!")
+            stop
+        startSelection(getLobby(player))
+
+command /test-results-screen:
+    permission: op
+    trigger:
+        startResults(getLobby(player))
+
+#command /test-leaderboard-screen:
+#    permission: op
+#    trigger:
+#        set {_lobby} to getLobby(player)
+
+#        loop getPlayers({_lobby}):
+#            openSelectionScreen(loop-player, {_lobby})
+#            applyInvis(loop-player)
+
+#        wait 1 tick
+
+#        startLeaderboardScreen({_lobby})
+
+#        wait 1 tick
+    
+#        while {-showing-results::%{_lobby}%} is set:
+#            wait 1 tick
+
+#        loop getPlayers({_lobby}):
+#            deleteScreenDisplay(loop-player)
+#            removeInvis(loop-player)

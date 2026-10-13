@@ -1,0 +1,194 @@
+options:
+    speed: 0.75
+
+function pulseDisplayLandmines(display: entity, orig-scale: vector, orig-translation: vector):
+    if item of {_display} = orange concrete:
+        set item of {_display} to yellow concrete
+        set {_reset-item} to true
+
+    loop 5 times:
+        set interpolation delay of {_display} to 0 ticks
+        set {_final-scale} to 0.5 + 0.5 * easeInOutBounce(loop-value / 5)
+        set display scale of {_display} to {_final-scale} * {_orig-scale}
+        set display translation of {_display} to {_final-scale} * {_orig-translation}
+        wait 1 tick
+
+    if {_reset-item} = true:
+        set item of {_display} to orange concrete
+
+function landmines(p: player):
+
+    set {_l} to location 0.8 above location 1 infront of {_p}
+
+    spawn item display at {_l}:
+        set {_base-display} to event-entity
+        set item of {_base-display} to gray concrete
+        set display scale of {_base-display} to vector(1.35, 0.25, 1.35)
+        set display translation of {_base-display} to vector(0, 0, 0)
+        set teleport duration of {_base-display} to 1 tick
+        set interpolation duration of {_base-display} to 1 tick
+        set sky light override of {_base-display} to 15
+
+    set {_orig-scale-base} to display scale of {_base-display}
+    set {_orig-translation-base} to display translation of {_base-display}
+
+    spawn item display at {_l}:
+        set {_top-display} to event-entity
+        set item of {_top-display} to orange concrete
+        set display scale of {_top-display} to vector(1, 0.25, 1)
+        set display translation of {_top-display} to vector(0, 0.25, 0)
+        set teleport duration of {_top-display} to 1 tick
+        set interpolation duration of {_top-display} to 1 tick
+        set sky light override of {_top-display} to 15
+
+    set {_orig-scale-top} to display scale of {_top-display}
+    set {_orig-translation-top} to display translation of {_top-display}
+
+    make {_top-display} ride {_base-display}
+
+    set {_vel-vert} to 0.25
+    set {_vel-hori} to {@speed}
+    set {_acceleration} to 0.05
+
+    set {_angle} to 24 * (random element of 1 and -1)
+
+    set {_rand-yaw} to random integer between 1 and 360
+
+    play sound "entity.horse.armor" at volume 2 at pitch 1.2 at {_l}
+
+    set {_temp-l} to {_l}
+
+    while {_base-display} is alive:
+
+        set interpolation delay of {_base-display} to 0 ticks
+        set interpolation delay of {_top-display} to 0 ticks
+
+        #rotate {_base-display} and {_top-display} around y-axis by {_angle} * 1.5 degrees
+        #rotate {_base-display} and {_top-display} around x-axis by {_angle} / 1.5 degrees
+        #rotate {_base-display} and {_top-display} around z-axis by {_angle} / 6 degrees
+
+        teleport {_base-display} to {_temp-l}
+
+        rotateOnRollAxis({_base-display}, {_angle} / 6, vector(0, 0, 1))
+        rotateOnRollAxis({_top-display}, {_angle} / 6, vector(0, 0, 1))
+
+        set yaw of {_base-display} and {_top-display} to {_rand-yaw} + loop-counter * 24
+
+        if loop-counter >= 70:
+            exit loop
+
+        else if {except::*} does not contain block at {_temp-l}:
+            exit loop
+
+        else:
+            set {_targets::*} to getLivingEntities({_p}, {_temp-l}, 1.75) where [input != {_p}]
+            {_targets::*} is set:
+                exit loop
+
+        #play sound "entity.breeze.charge" at volume 1.5 at pitch 2 at {_temp-l}
+        play sound "entity.phantom.flap" at volume 2 at pitch 1.2 at {_temp-l}
+
+        wait 1 tick
+
+        set {_prev-l} to {_temp-l}
+
+        set {_vel-vert} to {_vel-vert} - {_acceleration}
+        set {_temp-l} to location {_vel-vert} above location {_vel-hori} infront {_temp-l}
+
+    set {_ray} to ray trace from {_prev-l} along (vector from {_prev-l} to {_temp-l}) with max distance 1 while ignoring passable blocks
+    set {_face} to ray trace hit blockface of {_ray}
+
+    #if {_face} = down_face:
+    #    if "%block at {_temp-l}%" does not contain "slab" or "trapdoor":
+    #        set {_check-vert} to false
+    
+    while block at {_temp-l} != air:
+        set {_temp-l} to location 0.25 above {_temp-l}
+        if loop-counter = 8:
+                #kill {_base-display}
+            set {_temp-l} to location 2 below {_temp-l}
+            set {_ray} to ray trace from {_prev-l} along (vector from {_prev-l} to {_temp-l}) with max distance 1 while ignoring passable blocks
+            set {_face} to (ray trace hit blockface of {_ray})
+            if "%block at ray trace hit location of {_ray}%" contains "slab" or "trapdoor":
+                set {_face} to up_face
+            #broadcast "%{_face}%"
+            if {_face} = up_face:
+                kill {_base-display}
+            exit loop
+
+    if all:
+        {_face} is set
+        {_face} != up_face or down_face
+    then:
+        set {_yaw} to cardinalDirectionToYaw({_face})
+        set {_pitch} to -90
+        if {_face} = east_face or west_face:
+            set {_yaw} to {_yaw} + 180
+            set x-coord of {_temp-l} to x-coord of block at {_temp-l}
+        else if {_face} = north_face or south_face:
+            set z-coord of {_temp-l} to z-coord of block at {_temp-l}
+        set {_v} to vector from yaw {_yaw} + 180 and pitch 0
+        set vector length of {_v} to 0.5
+        set {_temp-l} to {_temp-l} ~ {_v}
+    else:
+        set {_yaw} to 0
+        set {_pitch} to 0
+        set y-coord of {_temp-l} to y-coord of block at {_temp-l} - 0.4
+
+    set yaw of {_temp-l} to {_yaw}
+    set pitch of {_temp-l} to {_pitch}
+
+    teleport {_base-display} and {_top-display} to {_temp-l}
+    set left transformation rotation of {_base-display} and {_top-display} to quaternion(1, 0, 0, 0)
+
+    set display translation of {_top-display} to vector(0, 0.25, 0)
+
+    if {_face} = down_face:
+        set y-coord of {_temp-l} to (y-coord of block at ray trace hit location of {_ray}) - 0.5
+        teleport {_base-display} and {_top-display} to location 0.1 below {_temp-l}
+        rotateOnRollAxis({_base-display}, 180, vector(1, 0, 0))
+        rotateOnRollAxis({_top-display}, 180, vector(1, 0, 0))
+
+    set {_orig-translation-base} to display translation of {_base-display}
+    set {_orig-translation-top} to display translation of {_top-display}
+
+    set {_block-type} to type of block at location 1 below {_temp-l}
+
+    draw 25 {_block-type} block particle with offset vector(0.5, 0.5, 0.5) at {_temp-l}
+    play sound "block.note_block.pling" at volume 1.5 at pitch 1.2 at {_temp-l}
+    play sound "block.vault.insert_item" at volume 1.5 at pitch 1.5 at {_temp-l}
+    play sound (break sound of {_block-type}) at volume 1.5 at pitch 1 at {_temp-l}
+
+    while {_base-display} is alive:
+
+        if mod(loop-counter, 15) = 0:
+            pulseDisplayLandmines({_base-display}, {_orig-scale-base}, {_orig-translation-base})
+            pulseDisplayLandmines({_top-display}, {_orig-scale-top}, {_orig-translation-top})
+            play sound "block.note_block.bit" at volume 0.5 at pitch 2 at {_temp-l}
+
+        set {_targets::*} to getLivingEntities({_p}, {_temp-l}, 1.75) where [input != {_p}]
+        if {_targets::*} is set:
+            exit loop
+
+        if loop-counter <= 20:
+            set interpolation delay of {_base-display} to 0 ticks
+            set interpolation delay of {_top-display} to 0 ticks
+            rotate {_base-display} and {_top-display} around y-axis by {_angle} * (1.5 - loop-counter * 1.5 / 20) degrees
+
+        if loop-counter > 200:
+            exit loop
+
+        wait 1 tick
+
+    if {_targets::*} is set:
+        loop {_targets::*}:
+            set {_ent} to loop-value
+            makeDamage({_p}, {_ent}, {powerAttributes::landmines::damage}, "landmines")
+            applyPush({_ent}, (normalized vector from {_temp-l} to {_ent}) * 0.75, {_p}, "landmines")
+
+    kill {_base-display} and {_top-display}
+    draw 1 white flash particle at {_temp-l}
+    draw 1 explosion particle at {_temp-l}
+
+    play sound "entity.generic.explode" at volume 1 at pitch 1.5 at {_temp-l}
+    play sound "block.beacon.deactivate" at volume 1 at pitch 1.5 at {_temp-l}

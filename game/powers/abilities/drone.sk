@@ -1,0 +1,193 @@
+options:
+	scale: 0.6
+	lifetime: 160
+	speed: 1.2
+
+on script load:
+	delete {action-bar-text::drone::*}
+	set {action-bar-text::drone::1} to "<##FFFFFF>LEFT CLICK TO DISMOUNT"
+	set {action-bar-text::drone::2} to "<##FFFFFF>LEFT CLICK TO DISMOUNT"
+	set {action-bar-text::drone::3} to "<##FFFFFF>LEFT CLICK TO DISMOUNT"
+	set {action-bar-text::drone::4} to "<##FFFFFF>LEFT CLICK TO DISMOUNT"
+	set {action-bar-text::drone::5} to "<##FFFFFF>LEFT CLICK TO DISMOUNT"
+	set {action-bar-text::drone::6} to "<##F3F3F3>LEFT CLICK TO DISMOUNT"
+	set {action-bar-text::drone::7} to "<##E7E7E7>LEFT CLICK TO DISMOUNT"
+	set {action-bar-text::drone::8} to "<##DBDBDB>LEFT CLICK TO DISMOUNT"
+	set {action-bar-text::drone::9} to "<##CECECE>LEFT CLICK TO DISMOUNT"
+	set {action-bar-text::drone::10} to "<##C2C2C2>LEFT CLICK TO DISMOUNT"
+	set {action-bar-text::drone::11} to "<##B6B6B6>LEFT CLICK TO DISMOUNT"
+	set {action-bar-text::drone::12} to "<##AAAAAA>LEFT CLICK TO DISMOUNT"
+	set {action-bar-text::drone::13} to "<##9E9E9E>LEFT CLICK TO DISMOUNT"
+	set {action-bar-text::drone::14} to "<##929292>LEFT CLICK TO DISMOUNT"
+	set {action-bar-text::drone::15} to "<##868686>LEFT CLICK TO DISMOUNT"
+	set {action-bar-text::drone::16} to "<##797979>LEFT CLICK TO DISMOUNT"
+	set {action-bar-text::drone::17} to "<##6D6D6D>LEFT CLICK TO DISMOUNT"
+	set {action-bar-text::drone::18} to "<##616161>LEFT CLICK TO DISMOUNT"
+	set {action-bar-text::drone::19} to "<##555555>LEFT CLICK TO DISMOUNT"
+	set {action-bar-text::drone::20} to "<##555555>LEFT CLICK TO DISMOUNT"
+	set {action-bar-text::drone::21} to "<##555555>LEFT CLICK TO DISMOUNT"
+	set {action-bar-text::drone::22} to "<##555555>LEFT CLICK TO DISMOUNT"
+	set {action-bar-text::drone::23} to "<##616161>LEFT CLICK TO DISMOUNT"
+	set {action-bar-text::drone::24} to "<##6D6D6D>LEFT CLICK TO DISMOUNT"
+	set {action-bar-text::drone::25} to "<##797979>LEFT CLICK TO DISMOUNT"
+	set {action-bar-text::drone::26} to "<##868686>LEFT CLICK TO DISMOUNT"
+	set {action-bar-text::drone::27} to "<##929292>LEFT CLICK TO DISMOUNT"
+	set {action-bar-text::drone::28} to "<##9E9E9E>LEFT CLICK TO DISMOUNT"
+	set {action-bar-text::drone::29} to "<##AAAAAA>LEFT CLICK TO DISMOUNT"
+	set {action-bar-text::drone::30} to "<##B6B6B6>LEFT CLICK TO DISMOUNT"
+	set {action-bar-text::drone::31} to "<##C2C2C2>LEFT CLICK TO DISMOUNT"
+	set {action-bar-text::drone::32} to "<##CECECE>LEFT CLICK TO DISMOUNT"
+	set {action-bar-text::drone::33} to "<##DBDBDB>LEFT CLICK TO DISMOUNT"
+	set {action-bar-text::drone::34} to "<##E7E7E7>LEFT CLICK TO DISMOUNT"
+	set {action-bar-text::drone::35} to "<##F3F3F3>LEFT CLICK TO DISMOUNT"
+
+function drone(p: player):
+
+	set {-power-active::%{_p}%::drone} to true
+
+	set {_l} to location 2 above {_p}
+	set {_displays::*} to buildingToDisplay({structure::drone::1}, {structure::drone::2}, {structure::drone::centre}, {@scale}, location 2 above {_l})
+	set {_root} to {_displays::1}
+
+	loop {_displays::*} where ["%block data of input%" contains "trapdoor"]:
+		set {_propeller-displays::%loop-counter%} to loop-value
+		set {_v::%loop-counter%} to (display translation of loop-value) + 0.5 * vector({@scale}, {@scale}, {@scale})
+
+	spawn item display at location 0.5 * {@scale} above {_l}:
+		set {_camera-display} to event-entity
+		set item of {_camera-display} to {heads::camera}
+		set display scale of {_camera-display} to 2 * vector({@scale}, {@scale}, {@scale})
+		set teleport duration of {_camera-display} to 1 tick
+		set interpolation duration of {_camera-display} to 1 tick
+
+	spawn block display at {_l}:
+		set {_seat} to event-entity
+		set {-is-drone-seat::%{_seat}%} to true
+
+	set {_mannequin} to spawnMannequinClone({_p}, {_l})
+	make {_p} ride {_seat}
+	applyInvis({_p})
+
+	set {_temp-l} to {_l}
+
+	play sound "block.trial_spawner.about_to_spawn_item" at volume 3 at pitch 1.5 at {_l}
+	play sound "block.beacon.activate" at volume 3 at pitch 1.2 at {_l}
+	play sound "entity.horse.armor" at volume 3 at pitch 1.2 at {_l}
+
+	loop 36 times:
+		set {_v} to spherical vector radius 2, yaw loop-value * 10, pitch 0
+		draw 0 poof particle with offset {_v} with particle speed 0.1 at {_l} ~ {_v}
+
+	set {-action-bar::%{_p}%::drone} to true
+	set {-powers-locked::%{_p}%} to true
+
+	powerActionBar({_p}, "drone")
+	startDuration({_p}, "drone", {@lifetime} ticks)
+
+	loop {@lifetime} times:
+
+		if hasDied({_p}) = true:
+			exit loop
+
+		if {_p} is offline:
+			exit loop
+
+		set {_targets::*} to getLivingEntities({_p}, {_temp-l}, 2.5) where [input != {_p}]
+
+		{_targets::*} is set:
+			exit loop
+
+		if {-cancel::%{_p}%::drone} = true:
+			delete {-cancel::%{_p}%::drone}
+			exit loop
+
+		set {_v} to getWASD({_p})
+		
+		if {_v} != vector(0, 0, 0):
+
+			#set y component of {_v} to sin(pitch of {_p}) * -1
+			set vector length of {_v} to min({@speed}, loop-counter / 30)
+
+		if current input keys of {_p} contains jump key:
+			add 0.5 to y component of {_v}
+
+		if current input keys of {_p} contains sneak key:
+			add -0.5 to y component of {_v}
+
+		if all:
+			{except::*} contains block at {_temp-l} ~ {_v}
+			{except::*} contains block at {_temp-l} ~ {_v} * 0.5
+			{except::*} contains block at {_temp-l} ~ {_v} * 1
+		then:
+			set {_temp-l} to location ({-ufo-velocity::%{_seat}%}) above {_temp-l} ~ {_v}
+
+		set yaw of {_temp-l} to yaw of {_p}
+		set pitch of {_temp-l} to pitch of {_p}
+
+		teleport {_root} to {_temp-l}
+		teleport {_seat} to {_temp-l}
+
+		set interpolation delay of {_camera-display} to 0 ticks
+		teleport {_camera-display} to location 0.5 * {@scale} above {_temp-l} with yaw (yaw of {_temp-l}) + 180 with pitch (pitch of {_temp-l}) * -1
+		set {_angle} to min(48, 12 + loop-counter)
+		add {_angle} to {_propeller-yaw}
+
+		loop {_propeller-displays::*}:
+			set {_v} to {_v::%loop-counter-2%}
+
+			set interpolation delay of loop-value-2 to 0 ticks
+			set display translation of loop-value-2 to (display translation of loop-value-2) - {_v}
+			rotateOnRollAxis(loop-value-2, {_angle}, vector(0, 1, 0))
+			set interpolation delay of loop-value-2 to 0 ticks
+			set display translation of loop-value-2 to (display translation of loop-value-2) + {_v}
+
+
+		#rotate({_root}, yaw of {_p}, 0, false)
+		#rotate({_seat}, yaw of {_p}, 0, false)
+
+		draw 2 block particle using iron trapdoor at {_temp-l}
+
+		#chance of 25%:
+			#draw 1 gust particle with offset vector(1, 1, 1) with particle speed 0.1 at {_temp-l}
+
+		play sound "block.iron_trapdoor.place" at volume 1 at pitch 1 at {_p}
+		if mod(loop-counter, 2) = 0:
+			play sound "entity.breeze.charge" at volume 1 at pitch 1 + loop-counter / {@lifetime} at {_p}
+			play sound "entity.iron_golem.attack" at volume 1 at pitch 1 + loop-counter / {@lifetime} at {_p}
+
+		if mod(loop-counter, 15) = 0:
+			play sound "block.note_block.bit" at volume 1 at pitch 1.5 at {_p}
+	
+		wait 1 ticks
+
+	removeInvis({_p})
+
+	draw 1 flash at {_temp-l}
+	create explosion of force 2 at {_temp-l}
+	play sound "block.respawn_anchor.deplete" at volume 3 at pitch 1.2 at {_temp-l}
+
+
+	loop {_targets::*}:
+		makeDamage({_p}, loop-value, {powerAttributes::drone::damage}, "drone")
+		applyPush(loop-value, (normalized vector from {_temp-l} to loop-value), {_p}, "drone")
+
+	kill {_root}
+	kill {_camera-display}
+	kill {_seat}
+
+	endMannequinLoop({_p}, {_mannequin})
+
+	delete {-action-bar::%{_p}%::drone}
+
+	delete {-powers-locked::%{_p}%}
+	delete {-power-active::%{_p}%::drone}
+
+	wait 1 tick
+
+on dismount:
+	if {-is-drone-seat::%vehicle of event-entity%} = true:
+		cancel event
+	
+on left click:
+	if {-is-drone-seat::%vehicle of event-entity%} = true:
+		set {-cancel::%event-entity%::drone} to true

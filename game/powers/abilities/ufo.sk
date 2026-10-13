@@ -1,0 +1,212 @@
+options:
+    radius: 6
+    height: 12.5
+    e: 2.71828
+    speed: 0.4
+    numRings: 8
+    
+function ufoSpawnBrokenBlock(l: location):
+
+    set {_scale} to 1
+
+    spawn block display at location 0.5 above {_l}:
+        set {_display} to event-entity
+        set block data of {_display} to block data of block at {_l}
+        set teleport duration of {_display} to 1 tick
+        set interpolation duration of {_display} to 1 tick
+        set display scale of {_display} to vector({_scale}, {_scale}, {_scale})
+        set display translation of {_display} to vector({_scale} * -0.5, {_scale} * -0.5, {_scale} * -0.5)
+        set sky light override of {_display} to 15
+
+    set {_v} to spherical vector with radius 1, yaw (random integer between 1 and 360), pitch 0
+
+    loop 60 times:
+
+        set {_scale} to 1 * {@e} ^ (loop-value / -40)
+
+        set display scale of {_display} to vector({_scale}, {_scale}, {_scale})
+        set display translation of {_display} to vector({_scale} * -0.5, {_scale} * -0.5, {_scale} * -0.5)
+
+        set vector length of {_v} to loop-value / 15
+        set {_temp-l} to location {@height} * loop-value / 60 above {_l} ~ {_v}
+        set yaw of {_temp-l} to loop-value * 6
+        set pitch of {_temp-l} to loop-value * 3
+        teleport {_display} to {_temp-l}
+        wait 1 tick
+
+    kill {_display}
+
+function ufoBreakBlocks(l: location):
+    loop blocks in radius 3 of {_l}:
+        chance of 4%:
+            y-coord of loop-value = y-coord of block at {_l}:
+                ufoSpawnBrokenBlock(location of loop-value)
+                groundShake(location of loop-value)
+                draw 1 campfire cosy smoke particle with offset vector(0.5, 0.5, 0.5) with particle speed 0.25 at loop-value
+                draw 5 (block data of loop-value) block particle with offset vector(0.5, 0.5, 0.5) with particle speed 0 at location 1 above loop-value
+                play sound (break sound of loop-value) at volume 2.5 at pitch 1 at loop-value
+    
+function ufoTractorBeamDisplay(p: player, l: location, n: number = 0):
+
+    set {_temp-l} to location {_n} above {_l}
+
+    if mod({_n} * 10, {@height} / 2) = 0:
+        set {_ring-display} to spawnTextRing({_temp-l}, "&a", {@radius})
+        set {_ring-display2} to spawnTextRing({_temp-l}, "&a", {@radius})
+    else:
+        set {_ring-display} to spawnTextRing({_temp-l}, "&2", {@radius})
+        set {_ring-display2} to spawnTextRing({_temp-l}, "&2", {@radius})
+
+    loop 300 times:
+
+        set {_l} to {-ufo-location::%{_p}%}
+
+        set {_n} to mod({_n} + {@height} / 50, {@height})
+        set {_temp-l} to location {_n} above {_l}
+
+        if {_n} <= {@height}:
+            loop getLivingEntities({_p}, {_temp-l}, {@radius}) where [input != {_p}]:
+
+                set {_ent} to loop-value-2
+                set {-last-in-beam::%{_ent}%::ufo} to now
+
+                if {-is-party-cannon-seat::%vehicle of {_ent}%} = true:
+                    remove {_ent} from passengers of vehicle of {_ent}
+
+                if {_n} >= {@height} * 0.95:
+                
+                    if time since {-hit::%{_p}%::%{_ent}%::ufo} is set:
+                        if time since {-hit::%{_p}%::%{_ent}%::ufo} < 1 seconds:
+                            continue
+
+                    set {-hit::%{_p}%::%{_ent}%::ufo} to now
+                    makeDamage({_p}, {_ent}, {powerAttributes::ufo::damage}, "ufo")
+                    create explosion of force 2 at location {@height} + 1 above {_l}
+
+                if mod(loop-value-1, 5) = 0:
+                    play sound "block.beacon.ambient" at volume 1.5 + ({_n} / {@height}) at pitch 2 at {_ent}
+
+                if {-is-flying-machine-seat::%vehicle of {_ent}%} = true:
+
+                    {-ufo-velocity::%vehicle of {_ent}%} is not set:
+                        set {-ufo-velocity::%vehicle of {_ent}%} to 0
+                    set {_diff} to {@speed} - {-ufo-velocity::%vehicle of {_ent}%}
+                    add {_diff} * 0.16 to {-ufo-velocity::%vehicle of {_ent}%}
+                    #teleport {_ent} to location (metadata "ufo-velocity" of {_ent}) above {_ent}
+
+                else:
+
+                    while vehicle of {_ent} is set:
+                        set {_ent} to vehicle of {_ent}
+
+                    set {_diff} to {@speed} - y component of velocity of {_ent}
+                    set y component of velocity of {_ent} to (y component of velocity of {_ent}) + {_diff} * 0.16
+
+        set pitch of {_temp-l} to 90
+        set yaw of {_temp-l} to loop-value * 7.2
+        teleport {_ring-display} to {_temp-l}
+        set pitch of {_temp-l} to -90
+        teleport {_ring-display2} to {_temp-l}
+
+        wait 1 tick
+
+    kill {_ring-display}
+    kill {_ring-display2}
+
+function ufo(p: player):
+
+    set {-power-active::%{_p}%::ufo} to true
+
+    set {_l} to location 0.5 above {_p}
+    set pitch of {_l} to 0
+
+    set {_ufo-displays::*} to buildingToDisplay({structure::ufo::1}, {structure::ufo::2}, {structure::ufo::centre}, 2, {_l})
+    set {_ufo-root} to {_ufo-displays::1}
+    rotateOnRollAxis({_ufo-displays::*}, 180, vector(0, 0, 1))
+
+    spawn block display at location 0.5 above {_l}:
+        set {_shadow} to event-entity
+        set teleport duration of {_shadow} to 1 tick
+        set shadow radius of {_shadow} to {@radius} + 1
+        set shadow strength of {_shadow} to 1
+
+    loop {@numRings} times:
+        ufoTractorBeamDisplay({_p}, {_l}, {@height} * loop-value / {@numRings})
+
+    play sound "block.beacon.activate" at volume 3 at pitch 1.5 at {_l}
+    play sound "block.end_portal.spawn" at volume 1 at pitch 1.2 at {_l}
+
+    startDuration({_p}, "ufo", 300 ticks)
+
+    set {_temp-l} to {_l}
+
+    loop 300 times:
+
+        play sound "entity.phantom.flap" at volume 3 at pitch 1.2 at {_l}
+        set {_entities::*} to getLivingEntities({_p}, {_temp-l}, 64) where [input != {_p}]
+
+        set {_nearest} to first element of {_entities::*}
+        loop {_entities::*}:
+            if distance between loop-value-2 and location {@height} above {_temp-l} < distance between {_nearest} and location {@height} above {_temp-l}:
+                set {_nearest} to loop-value-2
+
+        if {_nearest} is set:
+            set {_floor} to getFloorBlock({_nearest})
+            if {_floor} is set:
+                if y-coord of {_nearest} - {@height} - 4 > y-coord of {_temp-l}:
+                    set {_v} to vector from {_temp-l} to {_nearest}
+                else:
+                    set {_v} to vector from {_temp-l} to location 0.5 above {_floor}
+
+            else:
+                set {_v} to vector from {_temp-l} to location 1 + {@height} below {_nearest}
+
+            set vector length of {_v} to {@speed}
+            set {_temp-l} to {_temp-l} ~ {_v}
+            set pitch of {_temp-l} to 0
+
+
+        set {_vert-offset} to 32 * {@e} ^ (loop-value / -8) + sin(loop-value * 7.5) * 0.5
+        set yaw of {_temp-l} to loop-value * (7.2 + {_vert-offset} / 8)
+
+        teleport {_ufo-root} to location 2 + {_vert-offset} + {@height} above {_temp-l}
+
+
+        if mod(loop-value, 4) = 0:
+            ufoBreakBlocks(location 1 below {_temp-l})
+
+        set {-ufo-location::%{_p}%} to {_temp-l}
+        teleport {_shadow} to {_temp-l}
+        wait 1 tick
+
+        if mod(loop-value - 1, 2) = 0:
+            play sound "block.note_block.didgeridoo" at volume 2.5 at pitch 0.5 + {_vert-offset} / 24 at {_temp-l}
+            #play sound "block.note_block.bit" at volume 2 at pitch 0.5 at {_temp-l}
+
+        if mod(loop-value - 1, 1) = 0:
+            play sound "entity.breeze.land" at volume 2 at pitch 1.5 at {_temp-l}
+
+        #chance of 20%:
+        #    play sound "entity.wither.break_block" at volume 1.5 at pitch 1.2 at {_temp-l}
+
+        #if mod(loop-value - 1, 10) = 0:
+        #    play sound "block.trial_spawner.spawn_mob" at volume 2 at pitch 1 at {_temp-l}
+
+    create explosion of force 3 at location {@height} + 1 above {_temp-l}
+    play sound "block.beacon.deactivate" at volume 3 at pitch 1.5 at {_temp-l}
+    play sound "entity.iron_golem.death" at volume 3 at pitch 0.8 at {_temp-l}
+    kill {_shadow}
+
+    set {_yaw} to yaw of {_temp-l}
+
+    loop 40 times:
+
+        set {_vert-offset} to 32 * {@e} ^ ((30 - loop-value) / -5)
+        set yaw of {_temp-l} to loop-value * (7.2 + {_vert-offset} / 8) + {_yaw}
+
+        teleport {_ufo-root} to location 2 + {_vert-offset} + {@height} above {_temp-l}
+        wait 1 tick
+
+    kill {_ufo-root}
+
+    delete {-power-active::%{_p}%::ufo}

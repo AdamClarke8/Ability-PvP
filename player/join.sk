@@ -1,0 +1,133 @@
+options:
+	height: 0.6
+
+function healthToText(health: number) :: text component:
+	set {_health} to ceil({_health} * 2) / 2
+	set {_text} to ""
+
+	set {_full-hearts} to floor({_health})
+	set {_half-hearts} to mod({_health} * 2, 2)
+	set {_empty-hearts} to 10 - {_full-hearts} - {_half-hearts}
+
+	set {_full-heart-sprite} to object text component with atlas "gui" with sprite "hud/heart/full"
+	set {_half-heart-sprite} to object text component with atlas "gui" with sprite "hud/heart/half"
+	set {_empty-heart-sprite} to object text component with atlas "gui" with sprite "hud/heart/vehicle_container"
+
+	loop {_full-hearts} times:
+		set {_text} to merge components {_text} and {_full-heart-sprite} using ""
+
+	loop {_half-hearts} times:
+		set {_text} to merge components {_text} and {_half-heart-sprite} using ""
+
+	loop {_empty-hearts} times:
+		set {_text} to merge components {_text} and {_empty-heart-sprite} using ""
+
+	return {_text}
+
+function spawnHealthDisplay(p: player):
+	spawn text display at head of {_p}:
+		set {_display} to event-entity
+		set text of {_display} to ""
+		set display scale of {_display} to vector(1, 1, 1)
+		#set display translation of {_display} to vector(0, 0.75, 0)
+		set line width of {_display} to 1000
+		set billboard of {_display} to center
+		set color of {_display} to rgb(0, 0, 0, 0)
+		set teleport duration of {_display} to 1 tick
+		set interpolation duration of {_display} to 1 tick
+
+	make {_display} ride {_p}
+	make {_display} disappear for {_p}
+
+	while {_p} is online:
+		set interpolation delay of {_display} to 0 ticks
+		if {_display} is not alive:
+			exit loop
+		if {_p} has invisibility:
+			set text of {_display} to ""
+		else if gamemode of {_p} = spectator:
+			set text of {_display} to ""
+		else:
+			set text of {_display} to healthToText(health of {_p}) and "" and ""
+		wait 1 ticks
+	kill {_display}
+
+on join:
+	set join message to "&8[&b+&8] %colored player's prefix%&7%player%"#'
+	sidebar(player)
+	removeInvis(player)
+	make player not glow for all players
+	#spawnHealthDisplay(player)
+	#set helmet of player to stone button named "&7"
+
+	# randomly allocate selected powers if not assigned yet
+	(indices of {powers-owned::%player%::*}) is not set:
+		set {powers-owned::%player%::uncommon::popcorn} to 1
+		set {powers-owned::%player%::uncommon::minecart} to 1
+		set {powers-owned::%player%::rare::giant-mushroom} to 1
+		set {powers-owned::%player%::rare::mighty-mace} to 1
+		set {powers-owned::%player%::epic::sledgehammer} to 1
+		set {powers-selected::%player%::uncommon::1} to "popcorn"
+		set {powers-selected::%player%::uncommon::2} to "minecart"
+		set {powers-selected::%player%::rare::1} to "giant-mushroom"
+		set {powers-selected::%player%::rare::2} to "mighty-mace"
+		set {powers-selected::%player%::epic::1} to "sledgehammer"
+
+	set {_lobby} to getLobby(player)
+
+	if all:
+		{-gamemode::%{_lobby}%} is not set
+		getPlayerSide(player) is set
+	then:
+		removeFromTeam(player, getPlayerSide(player))
+
+	if {_lobby} is set:
+		if any:
+			{-selection-in-progress::%{_lobby}%} = true
+			{-showing-results::%{_lobby}%} = true
+		then:
+			warpToLobby(player, {_lobby})
+		else:
+			warpToLobby(player, getBestLobby())
+	else:
+		warpToLobby(player, getBestLobby())
+
+
+	#make player disappear for (all players where [getPlayers({_lobby}) does not contain input])
+
+	while player is online:
+		if getLobby(player) is set:
+			if all:
+				y-coord of player < (y-coord of getCurrentMapCentre(getLobby(player)) - 15)
+				{-is-spectating::%player%} != true
+				player's gamemode != spectator
+			then:
+				set {-fell-into-void::%player%} to true
+				kill player
+				wait 2 ticks
+				delete {-fell-into-void::%player%}
+		apply infinite ambient potion effect of weakness 255 to player:
+			hide the particles
+			hide the icon
+		apply infinite ambient potion effect of saturation 255 to player:
+			hide the particles
+			hide the icon
+		wait 1 tick
+
+#on inventory click:
+#	if index of event-slot = 39:
+#		cancel event
+
+on quit:
+	set quit message to "&8[&6-&8] %colored player's prefix%&7%player%"
+	set {_lobby} to getLobby(player)
+	if any:
+		{-selection-in-progress::%{_lobby}%} = true
+		{-showing-results::%{_lobby}%} = true
+	then:
+		deleteScreenDisplay(player)
+		removeInvis(player)
+		if {-selecting-gamemode::%{_lobby}%} = true:
+			clearVoteGamemode(player, {_lobby})
+		else if {-selecting-map::%{_lobby}%} = true:
+			clearVoteMap(player, {_lobby})

@@ -1,0 +1,125 @@
+on script load:
+	set {sidebar-text::king-of-the-hill} to "&eKing of the Hill"
+	set {sidebar-text::free-for-all} to "&fFree For All"
+	set {sidebar-text::team-deathmatch} to "&9Team &cDeathmatch"
+
+local function updateTitle(p: player):
+	set title of {_p}'s fastboard to formatted "    &l<gradient:#8018e7:#ffa100>MyServer    "
+	set line 1 of {_p}'s fastboard to ""
+	set line 2 of {_p}'s fastboard to "    &a&lSTATS"
+
+local function updateFragments(p: player):
+	set {_text::1} to " "
+	set {_text::2} to object text component with atlas "items" with sprite "item/prismarine_crystals"
+	set {_text::3} to formatted " <gradient:#ffffff:#faf9f6>Fragments &f%{fragments::%{_p}%} ? 0%"
+	set line 3 of {_p}'s fastboard to merge components {_text::*} joined with ""
+
+local function updatePoints(p: player):
+	set {_lobby} to getLobby({_p})
+	set {_text::1} to " "
+	if {-gamemode::%{_lobby}%} = "team-deathmatch" or "king-of-the-hill":
+		set {_side} to getPlayerSide({_p})
+		if {_side} = "blue":
+			set {_text::2} to object text component with sprite "block/blue_wool"
+		else if {_side} = "red":
+			set {_text::2} to object text component with sprite "block/red_wool"
+		set {_text::3} to formatted " <gradient:#49e817:#ccf9be>Team Points &f%{-points::%{_lobby}%::%{-gamemode::%{_lobby}%}%::%{_side}%} ? 0%"
+	else:
+		set {_text::2} to object text component with sprite "block/emerald_block"
+		set {_text::3} to formatted " <gradient:#49e817:#ccf9be>Points &f%{-points::%{_lobby}%::%{-gamemode::%{_lobby}%}%::%{_p}%} ? 0%"
+	set line 3 of {_p}'s fastboard to merge components {_text::*} joined with ""
+
+local function updateKills(p: player):
+	set {_lobby} to getLobby({_p})
+	set {_text::1} to " "
+	set {_text::2} to object text component with atlas "items" with sprite "item/spectral_arrow"
+	set {_text::3} to formatted " <gradient:#e5ff00:#b2c600>Kills &f%{-kills::%{_lobby}%::%{-gamemode::%{_lobby}%}%::%{_p}%} ? 0%"
+	set line 4 of {_p}'s fastboard to merge components {_text::*} joined with ""
+
+local function updateDeaths(p: player):
+	set {_lobby} to getLobby({_p})
+	set {_text::1} to " "
+	set {_text::2} to object text component with atlas "map_decorations" with sprite "red_x"
+	set {_text::3} to formatted " <gradient:#ff7000:#ff9b6a>Deaths &f%{-deaths::%{_lobby}%::%{-gamemode::%{_lobby}%}%::%{_p}%} ? 0%"
+	set line 5 of {_p}'s fastboard to merge components {_text::*} joined with ""
+
+local function updateGamemodeHeader(p: player):
+	set {_text::1} to " "
+	set {_text::2} to object text component with atlas "map_decorations" with sprite "player_off_map"
+	set {_text::3} to formatted " <gradient:#769fd4:#e0e9f5>Gamemode"
+	set line 9 of {_p}'s fastboard to merge components {_text::*} joined with ""
+
+local function updateGamemode(p: player):
+	set {_lobby} to getLobby({_p})
+	if {-gamemode::%{_lobby}%} is set:
+		set line 10 of {_p}'s fastboard to formatted "  &7» %{sidebar-text::%{-gamemode::%{_lobby}%}%}%"
+	else:
+		set line 10 of {_p}'s fastboard to formatted "  &7» &fN/A"
+
+local function updateTimeLeft(p: player):
+	set {_lobby} to getLobby({_p})
+	{-gamemode::%{_lobby}%} is set
+	set {_text::1} to " "
+	set {_text::2} to object text component with atlas "items" with sprite "item/clock_00"
+	set {_seconds-left} to getTimeLeftTicks({_lobby}) / 20
+	if {_seconds-left} > 60:
+		set {_text::3} to formatted " <gradient:#ffdb1a:#ffeb83>Time Left &f%getTimeLeftFormatted({_lobby})%"
+	else if {_seconds-left} > 10:
+		set {_text::3} to formatted " <gradient:#ffdb1a:#ffeb83>Time Left &e%getTimeLeftFormatted({_lobby})%"
+	else:
+		set {_text::3} to formatted " <gradient:#ffdb1a:#ffeb83>Time Left &c%getTimeLeftFormatted({_lobby})%"
+	set line 8 of {_p}'s fastboard to merge components {_text::*} joined with ""
+
+function sidebar(p: players, stat: text = ""):
+
+	if {_stat} = "points":
+		loop {_p::*}:
+			updatePoints(loop-value)
+		stop
+
+	if {_stat} = "fragments":
+		loop {_p::*}:
+			updateFragments(loop-value)
+		stop
+
+	if {_stat} = "kills":
+		loop {_p::*}:
+			updateKills(loop-value)
+		stop
+
+	if {_stat} = "deaths":
+		loop {_p::*}:
+			updateDeaths(loop-value)
+		stop
+
+	if {_stat} = "gamemode":
+		loop {_p::*}:
+			updateGamemode(loop-value)
+		stop
+
+	loop {_p::*}:
+		set {_p} to loop-value
+		clear {_p}'s fastboard
+
+		updateTitle({_p})
+
+		if all:
+			{-gamemode::%getLobby({_p})%} is set
+			{-is-spectating::%{_p}%} != true
+		then:
+			updatePoints({_p})
+
+		else:
+			updateFragments({_p})
+
+		updateKills({_p})
+		updateDeaths({_p})
+
+		set line 6 of {_p}'s fastboard to ""
+		set line 7 of {_p}'s fastboard to "    &b&lMATCH"
+
+		updateGamemodeHeader({_p})
+		updateGamemode({_p})
+	
+		#set line 10 of {_p}'s fastboard to ""
+		updateTimeLeft({_p})

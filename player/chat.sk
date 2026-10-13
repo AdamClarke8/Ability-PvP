@@ -1,0 +1,69 @@
+options:
+    cross_chat: channel with id "REDACTED"
+
+on script load:
+    delete {filter::*}
+
+function filter(message: text) :: text:
+    loop {filter::*}:
+        if {_message} contains loop-value:
+            return loop-value
+
+function ping(p: player):
+	loop 3 times:
+		play sound "block.note_block.pling" at volume 10 at pitch 1.2 to {_p}
+		wait 4 ticks
+
+on chat:
+    cancel event
+    set {_p::*} to all players where [message contains "@%input%"]
+    set {_msg} to message
+
+    loop {_p::*}:
+        replace "@%loop-value%" with "&b@%loop-value%&r" in {_msg}
+
+    set {_filtered} to filter({_msg})
+
+    if {_msg} contains "/join":
+        stop
+
+    if {_filtered} is set:
+        {-filtered::%player%} isn't set:
+            #set message to random element of {ez::*}
+            set {-filtered::%player%} to true
+            set {_messageHidden} to first 2 characters of {_t}
+            loop (length of {_t} - 2) times:
+                set {_messageHidden} to "%{_messageHidden}%*"
+            error(player, "&cBlacklisted word detected: %{_messageHidden}%")
+            wait 3 seconds
+            delete {-filtered::%player%}
+        stop
+
+    set {_color} to {color::%player%} ? "&f"
+    set {_msg} to "%prefix of player%%name of player% &7» %{_color}%%{_msg}%"
+    #set chat format to "%player's prefix%%player% &7» &r%formatted message%"
+
+    if {-chat::%player%} is set:
+        send "&cYou must wait before sending another message!"
+        stop
+
+    set {-chat::%player%} to true
+    set {_players::*} to getPlayersInLobby(getLobby(player))
+    loop all players:
+        if {_players::*} contains loop-player:
+            send formatted {_msg} to loop-player
+        else:
+            send formatted "&b&l%uppercase getLobby(player)% &7| %{_msg}%" to loop-player
+
+    wait 1 tick
+
+    set {_discord-msg} to uncolored message
+    replace all "@" with "" in {_discord-msg}
+    post "**%player%** » %{_discord-msg}%" to {@cross_chat}
+
+    loop {_p::*}:
+        ping(loop-value)
+        send "&6--------------------------%nl%&eYou were mentioned! &b^^^%nl%&6--------------------------" to loop-value
+
+    wait 1 second
+    delete {-chat::%player%}

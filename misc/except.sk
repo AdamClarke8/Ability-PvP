@@ -1,0 +1,2 @@
+on script load:
+    set {except::*} to oak pressure plate, lever, air, barrier, lava, short grass, dandelion, azure bluet, poppy and water

@@ -1,0 +1,201 @@
+options:
+	radius: 3.5
+	crater-radius: 3
+	crater-blocks: stone, andesite, oak planks, gold ore, coal ore
+	lifetime: 200
+	pop-out-cooldown: 50 ticks
+
+local function spawnCraterBlock(l: location, n: number):
+
+    if block at {_l} != air:
+        set {_l} to location 1 above {_l}
+
+    else:
+        while {except::*} contains block 1 below {_l}:
+            set {_l} to location 1 below {_l}
+            if loop-counter > 2:
+                stop
+
+    spawn block display at location 0.75 below {_l}:
+        set {_display} to event-entity
+
+        set {_type} to random element of {@crater-blocks}
+        set block data of {_display} to "%{_type}%" parsed as block data
+
+        set display scale of {_display} to vector(0, 0, 0)
+        set display translation of {_display} to vector(-0.625, 0, -0.625)
+        set interpolation duration of {_display} to 1 ticks
+        set teleport duration of {_display} to 1 ticks
+        set sky light override of {_display} to 15
+
+        set {_angle} to (random integer between -300 and 300) / 10
+        rotate {_display} around vector(0, 1, 0) by {_angle} degrees
+        rotate {_display} around vector(1, 0, 0) by {_angle} degrees
+
+
+    loop 10 times:
+        set {_prog} to loop-value / 10
+        set {_n} to easeInOutCubic({_prog})
+        set {_scale} to 1.25 * {_n}
+
+        set interpolation delay of {_display} to 0 ticks
+        set transformation scale of {_display} to vector({_scale}, {_scale}, {_scale})
+
+        wait 1 tick
+
+    wait "%{@lifetime} + {_n} - 10% ticks" parsed as timespan
+
+    loop 10 times:
+        set {_prog} to loop-value / 10
+        set {_n} to 1 - easeInBack({_prog})
+        set {_scale} to 1.25 * {_n}
+
+        set interpolation delay of {_display} to 0 ticks
+        set transformation scale of {_display} to vector({_scale}, {_scale}, {_scale})
+
+        wait 1 tick
+
+    kill {_display}
+    draw 5 {_type} block particle with offset vector(1, 1, 1) at {_l}
+    play sound (break sound of {_type}) at volume 1.5 at pitch 0.8 at {_l}
+
+function popOut(p: player, l: location):
+	spawn zombie at {_l}:
+		set {_zombie} to event-entity
+		add nbt compound from "{NoAI:1b,Silent:1b,IsBaby:0b}" to nbt compound of {_zombie}
+		set helmet of {_zombie} to {heads::miner-zombie}
+		set chestplate of {_zombie} to dyed(leather chestplate, light gray)
+		set boots of {_zombie} to dyed(leather boots, light gray)
+		set tool of {_zombie} to iron pickaxe
+		set generic scale attribute of {_zombie} to 1.25
+		set {-is-pothole-zombie::%{_zombie}%} to true
+
+	loop 25 times:
+		set {_vert-offset} to -1.5 + 3 * (sin(180 * loop-value / 25) ^ 2)
+		set {_temp-l} to location {_vert-offset} above {_l}
+		set yaw of {_temp-l} to loop-counter * (360 / 25)
+		teleport {_zombie} to location {_vert-offset} above {_temp-l}
+		wait 1 tick
+	kill {_zombie}
+
+local function progressDisplay(l: location) :: entity:
+	spawn text display at location 2 above {_l}:
+		set {_display} to event-entity
+		set display scale of {_display} to vector(1.5, 1.5, 1.5)
+		set text of {_display} to ""
+		set billboard of {_display} to center
+	displayProgress({_display})
+	return {_display}
+
+local function displayProgress(display: entity):
+	set {_ticks} to {@lifetime}
+	loop {_ticks} times:
+		if {_display} is not alive:
+			exit loop
+		set {_text} to ""
+		set {_progress} to ceil(10 * ({_ticks} - loop-counter) / {@lifetime})
+		loop {_progress} times:
+			set {_text} to "%{_text}%&a&l▌"
+		loop 10 - {_progress} times:
+			set {_text} to "%{_text}%&8&l▌"
+		set text of {_display} to {_text}
+		wait 1 tick
+	kill {_display}
+
+local function cooldownClock(l: location):
+	set {_ticks} to ticks of {@pop-out-cooldown}
+	spawn text display at location 2.5 above {_l}:
+		set {_display} to event-entity
+		set display scale of {_display} to vector(3, 3, 3)
+		set text of {_display} to ""
+		set billboard of {_display} to center
+		set color of {_display} to rgb(0, 0, 0, 0)
+	loop {_ticks} times:
+		set {_n} to 31 + ceil(loop-counter * 32  / {_ticks})
+		set {_sprite} to object text component with atlas "items" with sprite "item/clock_%{_n}%"
+		set display text component of {_display} to {_sprite}
+		#draw 1 large smoke particle with offset vector(0.5, 0.5, 0.5) with particle speed 0.1 at {_l}
+		wait 1 tick
+	kill {_display}
+
+local function spawnPickaxe(l: location):
+	spawn item display at {_l}:
+		set {_pickaxe} to event-entity
+		set item of {_pickaxe} to golden pickaxe of power 1
+		set display scale of {_pickaxe} to vector(1.25, 1.25, 1.25)
+		set teleport duration of {_pickaxe} to 1 tick
+		set interpolation duration of {_pickaxe} to 1 tick
+
+	loop 20 times:
+		set interpolation delay of {_pickaxe} to 0 ticks
+		set {_vert-offset} to -0.5 + 1.5 * (sin(180 * loop-value / 20) ^ 0.5)
+		set {_temp-l} to location {_vert-offset} above {_l}
+		set yaw of {_temp-l} to loop-counter * 18
+		set pitch of {_temp-l} to loop-counter * 3
+		teleport {_pickaxe} to location {_vert-offset} above {_temp-l}
+		wait 1 tick
+	
+	kill {_pickaxe}
+
+function pothole(p: player):
+
+	set {_range} to {powerAttributes::pothole::range}
+	set {_target} to getTargetLocation({_p}, {_range})
+
+	set {_temp-l} to {_target} with yaw (yaw of {_p}) + 90 with pitch 0
+
+	#set {_left-l} to location 1 above location 0.75 left of {_temp-l}
+	#set {_right-l} to location 1 above location 0.75 right of {_temp-l}
+
+	#spawn block display at {_left-l}:
+	#	set {_trapdoor-left} to event-entity
+	#	set block data of {_trapdoor-left} to spruce trapdoor
+	#	set display scale of {_trapdoor-left} to vector(0.75, 1.5, 1.5)
+	#	set display translation of {_trapdoor-left} to vector(-0.75, -0.75, -0.75)
+
+	#spawn block display at {_right-l}:
+	#	set {_trapdoor-right} to event-entity
+	#	set block data of {_trapdoor-right} to spruce trapdoor
+	#	set display scale of {_trapdoor-right} to vector(0.75, 1.5, 1.5)
+	#	set display translation of {_trapdoor-right} to vector(-0.75, -0.75, -0.75)
+
+	loop 12 times:
+		set {_v} to spherical vector radius {@crater-radius}, yaw (loop-value) * 360 / 12, pitch 0
+		spawnCraterBlock({_target} ~ {_v}, loop-value)
+
+	set {_progress-display} to progressDisplay({_target})
+
+	spawnPickaxe({_target})
+	groundShakeArea({_target}, 3, "{@lifetime} ticks" parsed as timespan)
+	play sound "block.anvil.use" at volume 3 at pitch 1.8 at {_target}
+	play sound "entity.villager.work_mason" at volume 3 at pitch 1 at {_target}
+	play sound "block.stone.place" at volume 3 at pitch 0.8 at {_target}
+
+	loop {@lifetime} times:
+		set {_targets::*} to getLivingEntities({_p}, {_target}, {@radius}) where [input != {_p}]
+		if all:
+			{_targets::*} is set
+			(time since {_last-popped-out}) ? 999 ticks > {@pop-out-cooldown}
+		then:
+			set {_last-popped-out} to now
+			popOut({_p}, {_target})
+			cooldownClock({_target})
+			fallingDebris({_target}, 3, 0.75)
+	
+			#spawnFloatingBlockCluster(location 0.5 below {_target}, {heads::gray-orb}, 6, 4, 30, 0.3)
+			play sound "entity.zombie.attack_wooden_door" at volume 3 at pitch 1.2 at {_target}
+			play sound "entity.zombie.hurt" at volume 3 at pitch 1.2 at {_target}
+			play sound "entity.iron_golem.repair" at volume 3 at pitch 1.2 at {_target}
+			play sound "block.fire.extinguish" at volume 3 at pitch 0.8 at {_target}
+
+			loop {_targets::*}:
+				set {_ent} to loop-value-2
+				makeDamage({_p}, {_ent}, {powerAttributes::pothole::damage}, "pothole")
+				#applyPush({_ent}, (normalized vector from {_target} to {_ent}) * vector(2, 1, 2), {_p}, "pothole")
+				play sound "enchant.thorns.hit" at volume 2.5 at pitch 1.2 at {_ent}
+				draw 20 crit particle with offset vector(1, 1, 1) with particle speed 0.25 at head of {_ent}
+	
+		wait 1 tick
+
+	kill {_trapdoor-left}
+	kill {_trapdoor-right}

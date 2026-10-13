@@ -1,0 +1,188 @@
+options:
+    blueBorder: light blue stained glass pane named "&9"
+    greenBorder: green stained glass pane named "&2"
+    purpleBorder: purple stained glass pane named "&5"
+    orangeBorder: orange stained glass pane named "&6"
+    yellowBorder: yellow stained glass pane named "&e"
+
+    exit: barrier named "&c&lEXIT"
+    back: arrow named "&f&lBACK"
+    fragments: prismarine crystals named "&b&lFRAGMENTS"
+
+    select-powers: spectral arrow named "&e&lSELECT POWERS"
+    no-powers: oak sign named "&fYou have no other powers to equip of this rarity!"
+
+    uncommon: &a&lUNCOMMON
+    rare: &9&lRARE
+    epic: &5&lEPIC
+    legendary: &6&lLEGENDARY
+
+    shop-prefix: &e&lSHOP &8»
+
+on script load:
+    set {power-shop-prices::uncommon} to 200
+    set {power-shop-prices::rare} to 350
+    set {power-shop-prices::epic} to 650
+
+function powerShopGui(p: player, returned: boolean = false):
+
+    if {-selection-in-progress::%getLobby({_p})%} = true:
+        set gamemode of {_p} to adventure
+
+    if {_returned} = false:
+        play sound "block.trial_spawner.spawn_item_begin" at volume 3 at pitch 1 to {_p}
+        play sound "item.book.page_turn" at volume 3 at pitch 1.2 to {_p}
+    #else:
+        #play sound "block.trial_spawner.close_shutter" at volume 3 at pitch 1 to {_p}
+
+    set {_gui} to chest inventory with 3 rows named "&6&lBUY POWERS"
+    set slots (integers between 0 and 8, integers between 18 and 26) of {_gui} to {@orangeBorder}
+
+    # placeholder powers
+    #set slot 11 of {_gui} to random element of getPowersOfRarity("uncommon")
+    #set slot 12 of {_gui} to random element of getPowersOfRarity("uncommon")
+    #set slot 13 of {_gui} to random element of getPowersOfRarity("rare")
+    #set slot 14 of {_gui} to random element of getPowersOfRarity("rare")
+    #set slot 15 of {_gui} to random element of getPowersOfRarity("epic")
+
+    set slot 3 of {_gui} to {@exit}
+
+    set slot 4 of {_gui} to {@fragments}
+    set lore of slot 4 of {_gui} to "&7» &f%{fragments::%{_p}%} ? 0%"
+ 
+    set slot 5 of {_gui} to {@select-powers}
+
+    open {_gui} to {_p}
+    set {-power-shop-gui::%{_p}%} to {_gui}
+
+    set {_slots::1} to {heads::uncommon-chest} named "&a&lUNCOMMON POWERS"
+    set {_slots::2} to {heads::rare-chest} named "&9&lRARE POWERS"
+    set {_slots::3} to {heads::epic-chest} named "&9&lEPIC POWERS"
+
+    loop integers between 1 and 3:
+        set slot 11 + loop-value of {_gui} to {_slots::%loop-value%}
+        play sound "ui.loom.select_pattern" at volume 3 at pitch 2 to {_p}
+        wait 2 ticks
+
+local function addPrice(i: item, rarity: text) :: item:
+    set {_price} to {power-shop-prices::%{_rarity}%}
+    set line (size of {_i}'s lore) + 1 of {_i}'s lore to " "
+    set line (size of {_i}'s lore) + 1 of {_i}'s lore to "&ePrice: &b%{_price}% Fragments"
+    return {_i}
+
+function powerShopPickPowerGui(p: player, rarity: text):
+
+    play sound "block.trial_spawner.close_shutter" at volume 3 at pitch 1 to {_p}
+
+    set {-power-shop-gui-index::%{_p}%} to {_index}
+    set {-power-shop-gui-rarity::%{_p}%} to {_rarity}
+
+    if {_rarity} = "uncommon":
+        #set {_header} to "{@uncommon} POWERS"
+        set {_header} to "&2&lUNCOMMON POWERS"
+        set {_border} to {@greenBorder}
+
+    else if {_rarity} = "rare":
+        set {_header} to "{@rare} POWERS"
+        set {_border} to {@blueBorder}
+
+    else if {_rarity} = "epic":
+        set {_header} to "{@epic} POWERS"
+        set {_border} to {@purpleBorder}
+    
+    else if {_rarity} = "legendary":
+        set {_header} to "{@legendary} POWERS"
+        set {_border} to {@orangeBorder}
+    
+    loop getPowerNamesOfRarity({_rarity}):
+        {powers-owned::%{_p}%::%{_rarity}%::%loop-value%} is not set
+        add loop-value to {_powers::*}
+
+    set {_num-rows} to 2 + ceil((size of {_powers::*}) / 9)
+
+    set {_gui} to chest inventory with {_num-rows} rows named {_header}
+    set slots (integers between 0 and 8, integers between ({_num-rows} - 1) * 9 and ({_num-rows} - 1) * 9 + 10) of {_gui} to {_border}
+    
+    set slot 3 of {_gui} to {@exit}
+
+    set slot 4 of {_gui} to {@fragments}
+    set lore of slot 4 of {_gui} to "&7» &f%{fragments::%{_p}%} ? 0%"
+ 
+    set slot 5 of {_gui} to {@back}
+
+    open {_gui} to {_p}
+    set {-power-shop-pick-power-gui::%{_p}%} to {_gui}
+    
+    loop {_powers::*}:
+        set {_i} to getPower(loop-value)
+        set {_i} to addPrice({_i}, {_rarity})
+        set slot 8 + loop-counter of {_gui} to {_i}
+        play sound "ui.loom.select_pattern" at volume 3 at pitch 2 to {_p}
+        wait 2 ticks
+
+
+on inventory click:
+    if event-inventory = {-power-shop-gui::%player%}:
+        cancel event
+
+        if event-slot = {@exit}:
+            close player's inventory
+        else if event-slot = {@select-powers}:
+            execute player command "/select-powers"
+
+        if event-slot's index = 12:
+            set {_rarity} to "uncommon"
+        else if event-slot's index = 13:
+            set {_rarity} to "rare"
+        else if event-slot's index = 14:
+            set {_rarity} to "epic"
+
+        if {_rarity} is set:
+            powerShopPickPowerGui(player, {_rarity})
+
+    else if event-inventory = {-power-shop-pick-power-gui::%player%}:
+        cancel event
+        if event-slot = {@back}:
+            powerShopGui(player, true)
+
+        else if isPower(event-slot) = true:
+
+            set {_rarity} to {-power-shop-gui-rarity::%player%}
+            set {_price} to {power-shop-prices::%{_rarity}%}
+
+            if ({fragments::%player%} ? 0) < {_price}:
+                error(player, "{@shop-prefix} &cYou need &e%{_price} - {fragments::%player%}% &cmore fragments!")
+                stop
+
+            set {_power-name} to unformat(event-slot's name)
+            set {fragments::%player%} to {fragments::%player%} - {_price}
+            set {powers-owned::%player%::%{_rarity}%::%{_power-name}%} to 1
+
+            send "{@shop-prefix} &ePurchased %event-slot's name% &efor &b%{_price}% Fragments&e!" to player
+            play sound "item.totem.use" at volume 3 at pitch 1.5 to player
+            play sound "entity.player.levelup" at volume 3 at pitch 1.2 to player
+
+            sidebar(player, "fragments")
+            powerShopPickPowerGui(player, {_rarity})
+
+
+on inventory close:
+    wait 1 tick
+    if all:
+        event-inventory = {-power-shop-gui::%player%} or {-power-shop-pick-power-gui::%player%}
+        top inventory of player != {-power-shop-gui::%player%} or {-power-shop-pick-power-gui::%player%}
+        {-selection-in-progress::%getLobby(player)%} = true
+    then:
+        set gamemode of player to spectator
+
+command /buy-powers:
+    aliases: power-shop
+    permission: select-powers
+    trigger:
+        if all:
+            gameIsRunning({_lobby}) = true
+            {-is-spectating::%player%} != true
+        then:
+            error(player, "&cYou can't buy powers while in a match!")
+            stop
+        powerShopGui(player)

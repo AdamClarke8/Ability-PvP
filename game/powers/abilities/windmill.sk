@@ -1,0 +1,82 @@
+options:
+    range: 10
+    knockback: 0.35
+
+function windmill(p: player):
+    
+    set {_l} to location 0.15 above getTargetLocation({_p}, 64)
+    set yaw of {_l} to yaw of {_p}
+    set pitch of {_l} to 0
+
+    set {_vane-displays::*} to buildingToDisplay({structure::wind-vane::1}, {structure::wind-vane::2}, {structure::wind-vane::centre}, 0.3, {_l})
+    set {_vane-root} to {_vane-displays::1}
+
+    set {_propeller-l} to location 1.8 above {_l}
+    set {_propeller-displays::*} to buildingToDisplay({structure::wind-vane-propeller::1}, {structure::wind-vane-propeller::2}, {structure::wind-vane-propeller::centre}, 0.4, {_propeller-l})
+    set {_propeller-root} to {_propeller-displays::1}
+
+    rotate({_vane-root}, (yaw of {_p}), 0)
+    set {_propeller-l} to location 1.8 above location 0.6 infront {_l}
+    teleport {_propeller-root} to {_propeller-l}
+
+    loop {_vane-displays::*}:
+        set sky light override of loop-value to 15
+
+    loop {_propeller-displays::*}:
+        set sky light override of loop-value to 15
+
+    loop 72 times:
+        set {_v} to spherical vector radius 3, yaw loop-value * 5, pitch 0
+        #draw 0 poof particle with offset {_v} with particle speed 0.25 at location 0.5 above {_l} ~ {_v}
+        #draw 0 firework particle with offset {_v} with particle speed 0.25 at location 0.5 above {_l} ~ {_v}
+        draw 1 oak planks block particle at {_l} ~ {_v}
+        #draw 0 cloud at {_l} ~ {_v} with offset {_v} with particle speed 0.25
+
+    play sound "entity.villager.work_fletcher" at volume 3 at pitch 1.2 at {_l}
+    play sound "block.piston.extend" at volume 3 at pitch 1.2 at {_l}
+
+    loop 100 times:
+        set {_angle} to min(loop-value * 2, 36) 
+        rotateOnRollAxis({_propeller-displays::*}, {_angle}, vector(0, 0, 1))
+        play sound "entity.phantom.flap" at volume 2 at pitch 0.5 + {_angle} / 72 at {_l}
+        play sound "entity.breeze.idle_air" at volume 1 at pitch 1 + {_angle} / 72 + loop-counter / 280 at {_l}
+
+        set {_v} to spherical vector radius 1, yaw (yaw of {_l}) + 90, pitch loop-counter * {_prev-angle} + {_angle}
+        #set {_draw-l} to location 0.5 infront of {_propeller-l} ~ {_v}
+        set {_draw-l} to location 1 infront of {_propeller-l} ~ {_v}
+        set {_hori-offset} to (random integer between 1 and {_angle}) * {@range} / 36
+        #draw 1 gust particle at location {_hori-offset} infront of {_draw-l} 
+        draw 0 poof particle with offset (vector from yaw (yaw of {_l}) and pitch 0) with particle speed {@range} / 10 at {_draw-l}
+        set {_v} to spherical vector radius 1, yaw (yaw of {_l}) + 90, pitch -1 * (loop-counter * {_prev-angle} + {_angle})
+        set {_draw-l} to location 1 infront of {_propeller-l} ~ {_v}
+        draw 0 poof particle with offset (vector from yaw (yaw of {_l}) and pitch 0) with particle speed {@range} / 10 at {_draw-l}
+
+        loop 10 times:
+            set {_temp-l} to location 1.5 above location (loop-value-2) * {@range} / 10 infront of {_l}
+            #draw 1 happy villager at {_temp-l}
+            loop getLivingEntities({_p}, {_temp-l}, 2.5, true, true):
+
+                if time since {-hit::%{_p}%::%{_ent}%::windmill} is set:
+                    if time since {-hit::%{_p}%::%{_ent}%::windmill} < 1 ticks:
+                        continue
+
+                set {-hit::%{_p}%::%{_ent}%::windmill} to now
+
+                set {_ent} to loop-value-3
+                #makeDamage({_p}, {_ent}, {powerAttributes::windmill::damage}, "windmill")
+                applyPush({_ent}, (vector from yaw (yaw of {_l}) and pitch 0) * {@knockback}, {_p}, "windmill")
+                play sound "entity.breeze.idle_air" at volume 3 at pitch 2 at {_ent}
+
+
+        wait 1 tick
+    #wait 100 ticks
+        set {_prev-angle} to {_angle}
+
+    kill {_vane-root}
+    kill {_propeller-root}
+
+    create explosion of force 2 at {_l}
+    itemDebris({_l}, 3, oak slab)
+    play sound "block.beacon.deactivate" at volume 3 at pitch 1.2 at {_l}
+    play sound "block.fire.extinguish" at volume 3 at pitch 1.5 at {_l}
+    

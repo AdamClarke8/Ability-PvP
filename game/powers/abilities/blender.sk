@@ -1,0 +1,73 @@
+options:
+    radius: 3
+    scale: 1.5
+
+function blenderShockwave(l: location): 
+
+    set {_ring-display} to spawnTextRing({_l}, "&f", 1)
+
+    set {_orig-scale} to display scale of {_ring-display}
+    set {_orig-translation} to display translation of {_ring-display}
+
+    loop 15 times:
+        
+        set display opacity of {_ring-display} to 255 + (loop-value * (27 - 255) / 15)
+        set yaw of {_ring-display} to loop-value * 8
+
+        set {_radius-offset} to ({@radius} - 1) * loop-value / (15 / 3)
+        set display scale of {_ring-display} to {_orig-scale} * (1 + {_radius-offset})
+        set display translation of {_ring-display} to {_orig-translation} * (1 + {_radius-offset})
+
+        wait 1 tick
+
+    kill {_ring-display}
+
+function blender(p: player):
+    set {_l} to location 2.5 above (getTargetLocation({_p}, 16) ? location 16 infront of {_p})
+
+    groundShakeArea(location 2.5 below {_l}, 3)
+    fallingDebris(location 2.5 below {_l}, 3, 1)
+    draw 25 stone block particle with offset vector(2, 0.5, 2) at location 2.5 below {_l}
+ 
+    set {_displays::*} to buildingToDisplay({structure::blender::1}, {structure::blender::2}, {structure::blender::centre}, {@scale}, {_l})
+    set {_root} to {_displays::1}
+
+    loop {_displays::*}:
+        set {_orig-translation::%loop-counter%} to display translation of loop-value
+
+    play sound "item.mace.smash_air" at volume 3 at pitch 1.5 at {_l}
+    play sound "entity.iron_golem.hurt" at volume 3 at pitch 0.8 at {_l}
+    play sound "block.note_block.pling" at volume 3 at pitch 2 at {_l}
+
+    loop 60 times:
+
+        play sound "entity.generic.splash" at volume 1.5 at pitch 1 + loop-value / 60 at {_l}
+        play sound "entity.phantom.flap" at volume 1.5 at pitch 1 + loop-value / 60 at {_l}
+        play sound "entity.breeze.charge" at volume 1.5 at pitch 1.5 + loop-value / 60 at {_l}
+
+        if loop-value < 15:
+            set {_scale-factor} to easeInOutBounce(loop-value / 15)
+            set {_final-scale} to {@scale} * {_scale-factor}
+            loop {_displays::*}:
+                set display scale of loop-value-2 to vector({_final-scale}, {_final-scale}, {_final-scale})
+                set display translation of loop-value-2 to {_orig-translation::%loop-counter-2%} * {_scale-factor}
+
+        if mod(-1 + loop-value, 10) = 0:
+            blenderShockwave(location 2.5 below {_l})
+            dropFakeItem(location 2 below {_l}, melon slice, 2, vector(2, 1, 2))
+
+        draw 5 splash particle with particle speed 0.25 with offset vector(2, 2, 2) at location 2 below {_l}
+        loop getLivingEntities({_p}, location 2 below {_l}, 7) where [input != {_p}]:
+            set {_ent} to loop-value-2
+            set y component of velocity of {_ent} to 0
+            applyPush({_ent}, 0.1 * (normalized vector from {_ent} to location 2 below {_l}), {_p}, "blender")
+            makeDamage({_p}, {_ent}, {powerAttributes::blender::damage}, "blender")
+        set {_yaw} to loop-value * 30
+        set {_pitch} to 15 * sin(90 * (loop-value / 20))
+        rotate({_root}, {_yaw}, {_pitch}, false)
+        wait 1 tick
+
+    draw 1 explosion particle at {_l}
+    play sound "entity.generic.explode" at volume 3 at pitch 1.2 at {_l}
+    play sound "block.beacon.deactivate" at volume 3 at pitch 1.2 at {_l}
+    kill {_root}

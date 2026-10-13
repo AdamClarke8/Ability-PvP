@@ -1,0 +1,217 @@
+options:
+    fire-speed: 1
+    fire-bloom: 4
+    fire-scale: 1.5
+
+on script load:
+    wait 40 ticks
+    set {hot-air-balloon-items::*} to {heads::fireball}, {heads::gray-orb}, {heads::light-gray-orb} and orange stained glass
+    #set {hot-air-balloon-items::*} to {heads::gray-orb}, {heads::light-gray-orb}, white stained glass and gray stained glass
+
+local function bounceDisplays(displays: entities):
+    loop {_displays::*}:
+        set {_orig-scale::%loop-counter%} to display scale of loop-value
+        set {_orig-translation::%loop-counter%} to display translation of loop-value
+    loop 10 times:
+        set {_scale-factor} to easeOutBounce(loop-value / 10)
+        loop {_displays::*}:
+            set display scale of loop-value-2 to 0.5 * (1 + {_scale-factor}) * {_orig-scale::%loop-counter-2%}
+            set display translation of loop-value-2 to 0.5 * (1 + {_scale-factor}) * {_orig-translation::%loop-counter-2%}
+        wait 1 tick
+
+local function fireParticle(l: location, v: vector):
+
+    #set {_l} to {_l}
+    set {_i} to random element of {hot-air-balloon-items::*}
+
+    set yaw of {_l} to (yaw of {_l}) + (random integer between 1 and 360)
+    set pitch of {_l} to 0
+
+    set yaw of {_v} to yaw of {_v} + (random integer between -900 and 900) * {@fire-bloom} / 100
+    set pitch of {_v} to pitch of {_v} + (random integer between -900 and 900) * {@fire-bloom} / 100
+
+    spawn item display at {_l}:
+        set {_display} to event-entity
+        set item of {_display} to {_i}
+        set display scale of {_display} to vector({@fire-scale}, {@fire-scale}, {@fire-scale}) * (random integer between 750 and 1250) / 1000
+        set display translation of {_display} to vector(0, 0, 0)
+        set interpolation duration of {_display} to 1 tick
+        set teleport duration of {_display} to 1 tick
+        set sky light override of {_display} to 15
+        rotate {_display} around x-axis by (random integer between 1 and 360) degrees
+        rotate {_display} around y-axis by (random integer between -90 and 90) degrees
+
+    set {_temp-l} to {_l}
+
+    loop 20 times:
+
+        set {_draw-l} to {_temp-l}
+        if {except::*} does not contain block at {_draw-l}:
+            exit loop
+
+        set {_v} to {_v} * {@fire-speed}
+        set {_temp-l} to {_temp-l} ~ {_v}
+        teleport {_display} to {_temp-l}
+
+        set display scale of {_display} to (display scale of {_display}) * 0.9
+        rotate {_display} around y-axis by 6 degrees
+        rotate {_display} around x-axis by 3 degrees
+
+        chance of 5%:
+            draw 1 smoke particle with offset vector(0.125, 0.125, 0.125) with particle speed 0.05 at {_draw-l}
+            
+        chance of 2%:
+            draw 1 flame particle with offset vector(0.125, 0.125, 0.125) with particle speed 0.05 at {_draw-l}
+
+        chance of 0.5%:
+            draw 1 campfire cosy smoke particle with offset vector(0, 0, 0) with particle speed 0 at {_draw-l}
+
+        wait 1 tick
+
+    kill {_display}
+
+local function deployWave(l: location):
+    loop 36 times:
+        set {_v} to spherical vector radius 3, yaw loop-value * 10, pitch 0
+        draw 0 poof particle with offset {_v} with particle speed 0.25 at location 0.5 above {_l} ~ {_v}
+        draw 0 firework particle with offset {_v} with particle speed 0.25 at location 0.5 above {_l} ~ {_v}
+        draw 1 oak planks block particle at {_l} ~ {_v}
+
+function hotAirBalloon(p: player):
+
+    set {_range} to {powerAttributes::hot-air-balloon::range}
+
+    set {_target} to getTargetLocation({_p}, {_range})
+    set {_l} to location 2.5 above {_target}
+
+    set {_displays::*} to buildingToDisplay({structure::hot-air-balloon::1}, {structure::hot-air-balloon::2}, {structure::hot-air-balloon::centre}, 1, location 28 above {_l})
+    set {_root} to {_displays::1}
+
+    loop {_displays::*}:
+        set sky light override of loop-value to 15
+
+    spawn block display at location 2 below {_root}:
+        set {_seat} to event-entity
+        set {-is-hot-air-balloon-seat::%{_seat}%} to true
+
+    set {_yaw} to 0
+
+    deployWave({_target})
+
+    play sound "block.beacon.activate" at volume 3 at pitch 1.5 at {_target}
+    play sound "block.trial_spawner.spawn_item" at volume 3 at pitch 0.8 at {_target}
+
+    loop 100 times:
+
+        if loop-counter <= 20:
+            set {_scale-factor} to cos(90 * loop-counter / 20) ^ 2
+            #set {_scale-factor} to 1 - easeOutQuint(loop-counter / 20)
+            #set {_scale-factor} to 1 - easeInOutQuad(loop-counter / 20)
+            set {_temp-l} to location 32 * {_scale-factor} above {_l}
+
+            loop 2 times:
+                fireParticle(location 2 above {_seat}, vector(0, 1.01 - 2 * (loop-counter-1) / 20, 0))
+            draw 1 flame particle with offset vector(1, 1, 1) with particle speed 0.25 at location of {_seat}
+    
+            play sound "entity.breeze.land" at volume 2 at pitch 2 - loop-counter / 20 at {_l}
+            #play sound "entity.phantom.flap" at volume 3 at pitch 2 - loop-counter / 20 at {_l}
+            play sound "entity.breeze.inhale" at volume 3 at pitch 2 - loop-counter / 40 at {_l}
+            play sound "block.piston.contract" at volume 2 at pitch 1.5 - loop-counter / 20 at {_temp-l}
+            play sound "entity.blaze.shoot" at volume 2 at pitch 2 - loop-counter / (40 / 3) at {_temp-l}
+            play sound "block.note_block.didgeridoo" at volume 3 at pitch 2 - loop-counter / 20 at {_temp-l}
+
+        else:
+            set {_targets::*} to getLivingEntities({_p}, {_target}, 4) where [isFreeToMove(input) = true]
+            set {_targets::*} to {_targets::*} where [input != {_p}]
+
+            if {_targets::*} is set:
+                set {_nearest} to getNearest({_l}, {_targets::*})
+                exit loop
+
+            set {_vert-offset} to -0.5 * sin(90 * (-20 + loop-counter) / 20)
+            set {_temp-l} to location {_vert-offset} above {_l}
+    
+            #draw 1 poof particle with offset vector(1, 1, 1) with particle speed 0.1 at location of {_seat}
+            #draw 1 flame particle with offset vector(1, 1, 1) with particle speed 0.25 at location of {_seat}
+            loop 2 times:
+                fireParticle(location 2 above {_seat}, vector(0, -1, 0))
+
+            #play sound "entity.phantom.flap" at volume 3 at pitch 1 at {_l}
+            play sound "entity.breeze.inhale" at volume 3 at pitch 1.5 + loop-counter / 200 at {_l}
+            play sound "entity.breeze.land" at volume 3 at pitch 1 + loop-counter / 20 at {_l}
+            play sound "entity.blaze.shoot" at volume 2 at pitch 0.5 + loop-counter / 200 at {_temp-l}
+            #play sound "block.piston.contract" at volume 2 at pitch 0.5 + loop-counter / 200 at {_temp-l}
+            play sound "block.note_block.didgeridoo" at volume 2 at pitch 1 + loop-counter / 200 at {_temp-l}
+
+        teleport {_root} to {_temp-l}
+        teleport {_seat} to location 2 below {_temp-l}
+
+        add 3 to {_yaw}
+        rotate({_root}, {_yaw}, 0, false)
+
+        wait 1 tick
+
+    #loop getLivingEntities({_p}, {_target}, 7) where [input != {_p} or {_nearest}]:
+    #    makeDamage({_p}, loop-value, {powerAttributes::hot-air-balloon::deployment-damage}, "hot-air-balloon")
+    #    applyPush(loop-value, (normalized vector from {_target} to loop-value) * vector(1.5, 2.5, 1.5), {_p}, "hot-air-balloon;deployment")
+    #    play sound "enchant.thorns.hit" at volume 3 at pitch 1.2 at loop-value
+    #    draw 5 crit particle with offset vector(1, 1, 1) with particle speed 0.25 at loop-value
+
+    if {_nearest} is set:
+        set {-powers-locked::%{_nearest}%} to true
+        set {-trapped::%{_nearest}%::hot-air-balloon} to true
+        make {_nearest} ride {_seat}
+        send action bar "" to {_nearest}
+        bounceDisplays({_displays::*})
+        play sound "entity.zombie.attack_wooden_door" at volume 3 at pitch 1.2 at {_l}
+        play sound "entity.chest.locked" at volume 3 at pitch 1.2 at {_l}
+
+    deployWave({_target})
+
+    play sound "" at volume 3 at pitch 1.2 at {_target}
+    
+    loop 20 times:
+        #set {_scale-factor} to cos(90 * loop-counter / 20) ^ 5
+        #set {_scale-factor} to easeOutQuint(loop-counter / 20)
+        set {_scale-factor} to sin(90 * loop-counter / 20) ^ 20
+        set {_temp-l} to location {_vert-offset} + 32 * {_scale-factor} above {_l}
+
+        teleport {_root} to {_temp-l}
+        teleport {_seat} to location 2 below {_temp-l}
+
+        add 3 + 24 * {_scale-factor} to {_yaw}
+        rotate({_root}, {_yaw}, 0, false)
+    
+        loop 3 times:
+            fireParticle(location 2 above {_seat}, vector(0, -1 - (loop-counter-1) / 20, 0))
+    
+        play sound "block.piston.extend" at volume 2 at pitch 1 + loop-counter / 20 at {_temp-l}
+        play sound "entity.blaze.shoot" at volume 2 at pitch 1 + loop-counter / 20 at {_temp-l}
+        play sound "block.note_block.didgeridoo" at volume 2 at pitch 1.5 + loop-counter / 40 at {_temp-l}
+
+        wait 1 tick
+
+    kill {_root}
+    kill {_seat}
+
+    create explosion of force 2 at {_temp-l}
+
+    if {_nearest} is set:
+        delete {-powers-locked::%{_nearest}%}
+        delete {-trapped::%{_nearest}%::hot-air-balloon}
+        popFirework({_temp-l}, (white, cyan and blue))
+        if all:
+            onSameSide({_p}, {_nearest}) = false
+            {-mannequin::%{_p}%} != {_nearest}
+        then:
+            makeDamage({_p}, {_nearest}, {powerAttributes::hot-air-balloon::damage}, "hot-air-balloon")
+        else:
+            apply slow falling 10 to {_nearest} for 5 seconds:
+                hide particles
+
+        wait 1 tick
+        applyPush({_nearest}, vector(0, 1, 0), {_p}, "hot-air-balloon")
+
+on dismount:
+    if {-is-hot-air-balloon-seat::%vehicle of event-entity%} = true:
+        cancel event

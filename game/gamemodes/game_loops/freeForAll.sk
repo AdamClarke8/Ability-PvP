@@ -1,0 +1,185 @@
+options:
+    time-until-results: 140
+
+function endFreeForAll(lobby: text):
+    set {free-for-all::%{_lobby}%} to false
+    delete {-points::%{_lobby}%::free-for-all::*}
+    delete {-kills::%{_lobby}%::free-for-all::*}
+    delete {-deaths::%{_lobby}%::free-for-all::*}
+    delete {-points::%{_lobby}%::free-for-all::*}
+    delete {-damage-dealt::%{_lobby}%::free-for-all::*}
+    delete {-damage-taken::%{_lobby}%::free-for-all::*}
+    delete {-gamemode::%{_lobby}%}
+    cleanUpPlayers({_lobby}, getPlayers({_lobby}))
+    cleanUpMap({_lobby}, getCurrentMap({_lobby}))
+
+local function getWinner(lobby: text) :: offlineplayer:
+
+    set {_winner} to (first element of (indices of {-points::%{_lobby}%::free-for-all::*})) ? (first element of getPlayers({_lobby}))
+    set {_points} to {-points::%{_lobby}%::free-for-all::%{_winner}%} ? 0
+
+    loop indices of {-points::%{_lobby}%::free-for-all::*}:
+        set {_current-points} to {-points::%{_lobby}%::free-for-all::%loop-value%}
+        if {_current-points} > {_points}:
+            set {_winner} to loop-value
+            set {_points} to {_current-points}
+
+    return ({_winner} parsed as player) ? ({_winner} parsed as offlineplayer)
+
+function declareWinnerFreeForAll(lobby: text, winner: player):
+
+    set {free-for-all::%{_lobby}%} to false
+    set {_player-head} to object text component with player head from {_winner}
+    set {_text::*} to nl, "&a① &7»", "&a&l%{_winner}%", {_player-head}, "&fhas won! &7(%{-points::%{_lobby}%::free-for-all::%{_winner}%}% points)" and nl
+    set {_text} to merge components {_text::*} with " "
+    send component {_text} to getPlayersInLobby({_lobby})
+
+    set {_losers::*} to getPlayers({_lobby}) where [input != {_winner}]
+
+    sendWinnerTitle({_winner})
+    sendLoserTitle({_losers::*})
+
+    awardWinners({_winner}, "free-for-all")
+    awardLosers({_losers::*}, "free-for-all")
+
+    awardForKills({_lobby}, "free-for-all")
+    awardForAssists({_lobby}, "free-for-all")
+
+    play sound "event.raid.horn" at volume 3 at pitch 1.2 to getPlayersInLobby({_lobby})
+    play sound "ui.toast.challenge_complete" at volume 3 at pitch 1 to getPlayersInLobby({_lobby})
+    cleanUpPlayers({_lobby}, getPlayers({_lobby}))
+    cleanUpMap({_lobby}, getCurrentMap({_lobby}))
+    wait {@time-until-results} ticks
+    startResults({_lobby})
+
+    wait 5 ticks
+    while {-showing-results::%{_lobby}%} = true:
+        wait 1 tick
+
+    endFreeForAll({_lobby})
+
+function startFreeForAll(lobby: text, ticks: number = 3 * 60 * 20):
+
+    set {-orig-players::%{_lobby}%::*} to getPlayers({_lobby})
+
+    set {free-for-all::%{_lobby}%} to true
+    set {-gamemode::%{_lobby}%} to "free-for-all"
+
+    #set {free-for-all-req-points} to {_points}
+    set {-time-left::%{_lobby}%::free-for-all} to {_ticks}
+    set {-max-time::%{_lobby}%::free-for-all} to {_ticks}
+
+    loop getPlayers({_lobby}):
+        resetPlayerMatch(loop-player)
+        sidebar(loop-player)
+
+    loadPowerChests({_lobby}, getCurrentMap({_lobby}))
+    loadPartyCannons({_lobby}, getCurrentMap({_lobby}))
+
+    loop 100 times:
+        wait 1 tick
+
+    giveStartingPowers({_lobby})
+
+
+    set {_l} to location 1 above getCurrentMapCentre({_lobby})
+
+    set yaw of {_l} to 0
+    set pitch of {_l} to 0
+
+    spawn text display at location 3 above {_l}:
+        set {_text-display} to event-entity
+        set text of {_text-display} to ""
+        set display scale of {_text-display} to vector(4, 4, 4)
+        set line width of {_text-display} to 1000
+        set billboard of {_text-display} to vertical
+
+    #set {_radius} to 5
+    #set {_ring-display} to spawnTextRing(block at {_l}, "&c", {_radius})
+
+    while {free-for-all::%{_lobby}%} = true:
+
+        set {_text} to ""
+
+        if size of getPlayers({_lobby}) = 0:
+            exit loop
+
+        #set {_prev-players::*} to {_current-players::*}
+        #set {_current-players::*} to getPlayers({_lobby}) where [{-kills::free-for-all::%input%} > 0]
+
+
+        #loop {_current-players::*}:
+        #
+        #    if {-kills::free-for-all::%loop-value%} >= {_req-kills}:
+        #        set {_player-head} to object text component with player head from loop-value
+        #        set {_text::*} to nl, "&a① &7»", "&a&l%loop-value%", {_player-head}, "&fhas won! &7(%{_req-kills}% kills)" and nl
+        #        set {_text} to merge components {_text::*} with " "
+        #        broadcast component {_text}
+        #        loop players:
+        #            broadcast "&a%loop-value-2%: &f%{-kills::free-for-all::%loop-value-2%} ? 0% Kills&7, &f%{-damage-dealt::free-for-all::%loop-value-2%} ? 0% Damage Dealt&7, &f%{-damage-taken::free-for-all::%loop-value-2%} ? 0% Damage Taken"
+        #        broadcast ""
+        #        play sound "event.raid.horn" at volume 3 at pitch 1.2 at {_l}
+        #        play sound "ui.toast.challenge_complete" at volume 3 at pitch 1 at {_l}
+        #        endFreeForAll()
+        #        exit all loops
+        
+        if mod((loop-counter) - 1, 20) = 0:
+            set {_sorted-players::*} to sortArrayCompareDescending(indices of {-points::%{_lobby}%::free-for-all::*}, {-points::%{_lobby}%::free-for-all::*})
+
+        loop {_sorted-players::*}:
+            set {_player} to (loop-value parsed as player) ? (loop-value parsed as offlineplayer)
+            #{_player} is not set:
+            #    clear {-points::%{_lobby}%::free-for-all::%loop-value%}
+            #    continue
+    
+            set {_player-head} to object text component with player head from {_player}
+            #set {_name} to toSmallFont(name of {_player})
+            set {_prefix} to "&f%name of {_player}%"
+            #set {_score} to toSmallFont("%{-kills::free-for-all::%{_player}%}%")
+            set {_score} to "&7» &a%{-points::%{_lobby}%::free-for-all::%{_player}%}%"
+            set {_text} to merge components ({_text}, {_prefix}, {_player-head}, {_score} and nl) joined with " "
+        
+        #set {_objective} to toSmallFont("OBJECTIVE: 1000 POINTS")
+        set {_leaderboard} to toSmallFont("LEADERBOARD")
+        #set {_prefix::*} to "&b%{_objective}%", "&e%{_leaderboard}%"
+        #set {_prefix::*} to "&bOBJECTIVE: %{_points}% POINTS", "&e%{_leaderboard}%"
+
+        if mod({_ticks-left}, 20) = 0:
+            set {_prefix::*} to "&bTIME REMAINING: %getTimeLeftFormatted({_lobby})%", "&e%{_leaderboard}%"
+            sidebar(getPlayersInLobby({_lobby}), "time-left")
+
+        set {_text} to merge components ({_prefix::*} and {_text}) with nl
+        set display text component of {_text-display} to {_text}
+
+        #set interpolation delay of {_ring-display} to 0 ticks
+        #add 3 to yaw of {_ring-display}
+        
+        wait 1 tick
+        set {-time-left::%{_lobby}%::free-for-all} to {-time-left::%{_lobby}%::free-for-all} - 1
+        set {_ticks-left} to {-time-left::%{_lobby}%::free-for-all}
+
+        if {_ticks-left} = 2400:
+            warnMinutesLeft(getPlayersInLobby({_lobby}), 2)
+
+        else if {_ticks-left} = 1200:
+            warnMinutesLeft(getPlayersInLobby({_lobby}), 1)
+
+        else if {_ticks-left} = 200:
+            startMatchCountdown(getPlayersInLobby({_lobby}))
+
+        else if {_ticks-left} <= 0:
+            set {_winner} to getWinner({_lobby})
+            declareWinnerFreeForAll({_lobby}, {_winner})
+
+    kill {_text-display}
+    #kill {_ring-display}
+
+command /start-free-for-all <number>:
+    permission: op
+    trigger:
+        startFreeForAll(getLobby(player), 20 * 60 * arg)
+
+command /end-free-for-all:
+    permission: op
+    trigger:
+        endFreeForAll(getLobby(player))
