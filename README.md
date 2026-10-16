@@ -16,12 +16,12 @@ TAB: 5.4.0
 Vault: 1.7.3  
 WorldGuard: 7.0.15  
 
-A brief explanation of what each plugin does:  
+A brief explanation of what each dependency does:  
   
 DiSky: writing the logic for the Discord bot  
 LuckPerms: modifying permissions of players and handling groups  
 Multiverse-Core: enabling generation and easy configuration of many worlds  
-PoaSk: managing coloured entity glowing for teams  
+PoaSk: managing coloured entity glowing for teams, setting camera packets  
 SkBee: handling NBT of items/entities, drawing particles, modifying block data  
 TAB: configuring and animating the tab which shows at the top of the screen  
 Vault: pre-requisite for LuckPerms  
